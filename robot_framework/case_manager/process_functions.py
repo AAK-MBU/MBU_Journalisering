@@ -31,6 +31,9 @@ def update_status(conn_string, sp_name, params):
 def contact_lookup(case_handler, ssn, conn_string, db_update_sp, status_sp, status_params_failed, uuid, table_name):
     """Perform contact lookup and update database."""
     response = case_handler.contact_lookup(ssn, '/borgersager/_goapi/contacts/readitem')
+    person_full_name = None
+    person_go_id = None
+
     if response.ok:
         person_full_name = response.json()["FullName"]
         person_go_id = response.json()["ID"]
@@ -102,3 +105,4 @@ def create_case(case_handler, orchestrator_connection, person_full_name, ssn, ca
     )
     response = case_handler.create_case(case_data, '/_goapi/Cases')
     return response
+
