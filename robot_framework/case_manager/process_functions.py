@@ -103,5 +103,6 @@ def create_case(case_handler, orchestrator_connection, person_full_name, ssn, ca
         oc_args_json['supplementary_department_name'],
         True
     )
+    print(case_data)
     response = case_handler.create_case(case_data, '/_goapi/Cases')
     return response
