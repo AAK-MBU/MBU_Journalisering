@@ -14,6 +14,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
     """Do the primary process of the robot."""
     orchestrator_connection.log_trace("Running process.")
     oc_args_json = json.loads(orchestrator_connection.process_arguments)
+    orchestrator_connection.log_trace(oc_args_json)
     orchestrator_connection.log_info(orchestrator_connection.get_constant('test_uuid').value)
 
     credentials = pf.get_credentials_and_constants(orchestrator_connection)
@@ -61,7 +62,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         person_full_name,
         credentials['ssn'],
         case_folder_id,
-        oc_args_json
+        oc_args_json['case_data']
     )
 
     print(case_response.content)
