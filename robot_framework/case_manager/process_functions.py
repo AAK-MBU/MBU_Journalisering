@@ -79,7 +79,7 @@ def create_case_folder(case_handler, case_type, person_full_name, person_go_id, 
     return response['CaseID']
 
 
-def create_case(case_handler, orchestrator_connection, person_full_name, ssn, case_folder_id, oc_args_json):
+def create_case(case_handler, orchestrator_connection, person_full_name, ssn, case_type, case_folder_id, oc_args_json):
     """Create a new case."""
     match orchestrator_connection.process_name:
         case "Journalisering_Modersmaal":
@@ -88,7 +88,7 @@ def create_case(case_handler, orchestrator_connection, person_full_name, ssn, ca
             case_title = f"Visitering af {person_full_name} {ssn}"
 
     case_data = case_handler.create_case_data(
-        oc_args_json['case_type'],
+        case_type,
         oc_args_json['case_owner_id'],
         oc_args_json['case_owner_name'],
         oc_args_json['case_profile_id'],
