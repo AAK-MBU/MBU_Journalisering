@@ -60,6 +60,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         orchestrator_connection,
         person_full_name,
         credentials['ssn'],
+        oc_args_json['case_type'],
         case_folder_id,
         oc_args_json['case_data']
     )
