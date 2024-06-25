@@ -33,10 +33,10 @@ class CaseHandler:
             return f"{self.api_endpoint}{path}"
         return self.api_endpoint
 
-    def create_case_folder_data(self, case_type_prefix: objects.CaseTypePrefix, 
-                                person_full_name: str, 
-                                person_id: str, 
-                                person_ssn: str, 
+    def create_case_folder_data(self, case_type_prefix: objects.CaseTypePrefix,
+                                person_full_name: str,
+                                person_id: str,
+                                person_ssn: str,
                                 return_when_case_fully_created: bool = True) -> str:
         """
         Creates JSON data for a case folder.
@@ -107,7 +107,7 @@ class CaseHandler:
         endpoint = self._get_full_endpoint(endpoint_path)
 
         return cases.create_case_folder(case_folder_data, endpoint, self.api_username, self.api_password)
-    
+
     def create_case(self, case_data: str, endpoint_path: str):
         """
         Creates a case in the GetOrganized system using the provided case data.
@@ -131,5 +131,5 @@ class CaseHandler:
         - str: JSON string of the contact information.
         """
         endpoint = self._get_full_endpoint(endpoint_path)
-        
+
         return contacts.contact_lookup(person_ssn=person_ssn, api_endpoint=endpoint, api_username=self.api_username, api_password=self.api_password)
