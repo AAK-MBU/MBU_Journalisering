@@ -19,6 +19,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
 if __name__ == "__main__":
     oc = OrchestratorConnection.create_connection_from_args()
     oc_args_json = json.loads(oc.process_arguments)
+    oc.log_info(oc.get_constant('test_UUID').value)
 
     UUID = oc.get_constant('test_UUID').value
     SSN = oc.get_credential('test_person').password
@@ -45,6 +46,7 @@ if __name__ == "__main__":
     case_handler = CaseHandler(ENDPOINT, USERNAME, PASSWORD)
 
     # 1. contact lookup
+    oc.log_info("contact lookup")
     contact_lookup_response = case_handler.contact_lookup(SSN, '/borgersager/_goapi/contacts/readitem')
 
     if contact_lookup_response.ok:
@@ -65,6 +67,7 @@ if __name__ == "__main__":
     case_data_handler = CaseDataJson()
 
     # 2. check if case folder exists
+    oc.log_info("check if case folder exists")
     search_data = case_data_handler.search_case_folder_data_json(CASE_TYPE, PERSON_FULL_NAME, PERSON_GO_ID, SSN)
     search_case_folder_response = case_handler.search_for_case_folder(search_data, '/_goapi/cases/findbycaseproperties')
     if search_case_folder_response.ok:
@@ -83,11 +86,13 @@ if __name__ == "__main__":
 
     # 3. create case folder
     if not case_folder_id:
+        oc.log_info("create case folder")
         case_folder_data = case_handler.create_case_folder_data(CASE_TYPE, PERSON_FULL_NAME, PERSON_GO_ID, SSN)
         create_case_folder_response = case_handler.create_case_folder(case_folder_data, '/_goapi/Cases')
         case_folder_id = create_case_folder_response['CaseID']
 
     # 4. create case
+    oc.log_info("create case")
     match oc.process_name:
         case "Journalisering_Modersmaal":
             case_title = f"Modersmålsundervisning {PERSON_FULL_NAME}"
