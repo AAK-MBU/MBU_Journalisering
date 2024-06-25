@@ -1,5 +1,4 @@
 """Module to handle journalisering functionality"""
-# pylint: line-too-long
 
 from mbu_dev_shared_components.getorganized import objects
 from mbu_dev_shared_components.getorganized import cases
