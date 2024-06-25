@@ -1,4 +1,5 @@
 """Module to handle journalisering functionality"""
+# pylint: line-too-long
 
 from mbu_dev_shared_components.getorganized import objects
 from mbu_dev_shared_components.getorganized import cases
@@ -49,7 +50,9 @@ class CaseHandler:
             'ows_CaseCategory=\"Borgermappe\"',
             f'ows_CCMContactData=\"{person_full_name};#{person_id};#{person_ssn};#;#\" />'
         }
-        return self.case_obj.case_data_json(case_type_prefix, xml_metadata, return_when_case_fully_created)
+        return self.case_obj.case_data_json(case_type_prefix,
+                                            xml_metadata,
+                                            return_when_case_fully_created)
 
     def create_case_data(self,
                          case_type_prefix: objects.CaseTypePrefix,

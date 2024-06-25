@@ -39,17 +39,20 @@ if __name__ == "__main__":
         "UUID": f'{UUID}',
         "TableName": f'{TABLE_NAME}'
     }
+    PERSON_FULL_NAME = None
+    PERSON_GO_ID = None
 
     case_handler = CaseHandler(ENDPOINT, USERNAME, PASSWORD)
 
     # 1. contact lookup
     contact_lookup_response = case_handler.contact_lookup(SSN, '/borgersager/_goapi/contacts/readitem')
+
     if contact_lookup_response.ok:
-        person_full_name = contact_lookup_response.json()["FullName"]
-        person_id = contact_lookup_response.json()["ID"]
+        PERSON_FULL_NAME = contact_lookup_response.json()["FullName"]
+        PERSON_GO_ID = contact_lookup_response.json()["ID"]
         response_data_params = {
             "StepName": ("str", "contact_lookup"),
-            "JsonFragment": ("str", f'{{"ContactId": "{person_id}"}}'),
+            "JsonFragment": ("str", f'{{"ContactId": "{PERSON_GO_ID}"}}'),
             "UUID": ("str", f'{UUID}'),
             "TableName": ("str", f'{TABLE_NAME}')
         }
@@ -62,7 +65,7 @@ if __name__ == "__main__":
     case_data_handler = CaseDataJson()
 
     # 2. check if case folder exists
-    search_data = case_data_handler.search_case_folder_data_json(CASE_TYPE, person_full_name, person_id, SSN)
+    search_data = case_data_handler.search_case_folder_data_json(CASE_TYPE, PERSON_FULL_NAME, PERSON_GO_ID, SSN)
     search_case_folder_response = case_handler.search_for_case_folder(search_data, '/_goapi/cases/findbycaseproperties')
     if search_case_folder_response.ok:
         case_folder_id = search_case_folder_response.json()['CasesInfo'][0]['CaseID']
@@ -80,16 +83,16 @@ if __name__ == "__main__":
 
     # 3. create case folder
     if not case_folder_id:
-        case_folder_data = case_handler.create_case_folder_data(CASE_TYPE, person_full_name, person_id, SSN)
+        case_folder_data = case_handler.create_case_folder_data(CASE_TYPE, PERSON_FULL_NAME, PERSON_GO_ID, SSN)
         create_case_folder_response = case_handler.create_case_folder(case_folder_data, '/_goapi/Cases')
         case_folder_id = create_case_folder_response['CaseID']
 
     # 4. create case
     match oc.process_name:
         case "Journalisering_Modersmaal":
-            case_title = f"Modersmålsundervisning {person_full_name}"
+            case_title = f"Modersmålsundervisning {PERSON_FULL_NAME}"
         case "Journalisering_indmeldelse_i_modtagelsesklasse":
-            case_title = f"Visitering af {person_full_name} {SSN}"
+            case_title = f"Visitering af {PERSON_FULL_NAME} {SSN}"
 
     case_data = case_handler.create_case_data(
         CASE_TYPE,
