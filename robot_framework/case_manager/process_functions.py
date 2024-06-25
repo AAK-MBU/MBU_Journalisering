@@ -105,4 +105,3 @@ def create_case(case_handler, orchestrator_connection, person_full_name, ssn, ca
     )
     response = case_handler.create_case(case_data, '/_goapi/Cases')
     return response
-
