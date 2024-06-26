@@ -1,15 +1,30 @@
 """This module contains helper functions for the robot process."""
 
 import os
+import pyodbc
+from typing import Dict, Any, Optional, List
 
 from OpenOrchestrator.orchestrator_connection.connection import OrchestratorConnection
 from mbu_dev_shared_components.utils.db_stored_procedure_executor import execute_stored_procedure
 
 
-def get_credentials_and_constants(orchestrator_connection: OrchestratorConnection):
+def get_forms_data(conn_string: str, table_name: str, params: Optional[List[Any]] = None) -> List[str]:
+    """Retrieve the data for the specific form"""
+
+    query = f"SELECT uuid, data FROM rpa.rpa.{table_name} WHERE process_status IS NULL"
+    with pyodbc.connect(conn_string) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(query, params or [])
+            columns = [column[0] for column in cursor.description]
+            forms_data = [dict(zip(columns, row)) for row in cursor.fetchall()]
+    return forms_data
+
+
+def get_credentials_and_constants(orchestrator_connection: OrchestratorConnection) -> Dict[str, Any]:
     """Retrieve necessary credentials and constants."""
     uuid = orchestrator_connection.get_constant('test_uuid').value
     ssn = orchestrator_connection.get_credential('test_person').password
+
     if not any(ssn) or not any(uuid):
         raise ValueError("No ssn given.")
     credentials = {
@@ -23,16 +38,23 @@ def get_credentials_and_constants(orchestrator_connection: OrchestratorConnectio
     return credentials
 
 
-def update_status(conn_string, sp_name, params):
+def update_status(conn_string: str, sp_name: str, params: str) -> None:
     """Execute stored procedure to update status."""
     execute_stored_procedure(conn_string, sp_name, params)
 
 
-def contact_lookup(case_handler, ssn, conn_string, db_update_sp, status_sp, status_params_failed, uuid, table_name):
+def contact_lookup(case_handler,
+                   ssn: str,
+                   conn_string: str,
+                   db_update_sp: str,
+                   status_sp: str,
+                   status_params_failed: str,
+                   uuid: str,
+                   table_name: str) -> str:
     """Perform contact lookup and update database."""
-    response = case_handler.contact_lookup(ssn, '/borgersager/_goapi/contacts/readitem')
     person_full_name = None
     person_go_id = None
+    response = case_handler.contact_lookup(ssn, '/borgersager/_goapi/contacts/readitem')
 
     if response.ok:
         person_full_name = response.json()["FullName"]
@@ -51,7 +73,18 @@ def contact_lookup(case_handler, ssn, conn_string, db_update_sp, status_sp, stat
     return person_full_name, person_go_id
 
 
-def check_case_folder(case_handler, case_data_handler, case_type, person_full_name, person_go_id, ssn, conn_string, db_update_sp, status_sp, status_params_failed, uuid, table_name):
+def check_case_folder(case_handler,
+                      case_data_handler,
+                      case_type: str,
+                      person_full_name: str,
+                      person_go_id: str,
+                      ssn: str,
+                      conn_string: str,
+                      db_update_sp: str,
+                      status_sp: str,
+                      status_params_failed: str,
+                      uuid: str,
+                      table_name: str) -> str:
     """Check if case folder exists and update database."""
     search_data = case_data_handler.search_case_folder_data_json(case_type, person_full_name, person_go_id, ssn)
     response = case_handler.search_for_case_folder(search_data, '/_goapi/cases/findbycaseproperties')
@@ -72,14 +105,50 @@ def check_case_folder(case_handler, case_data_handler, case_type, person_full_na
     return case_folder_id
 
 
-def create_case_folder(case_handler, case_type, person_full_name, person_go_id, ssn):
+def create_case_folder(case_handler,
+                       case_type: str,
+                       person_full_name: str,
+                       person_go_id: str,
+                       ssn: str,
+                       conn_string: str,
+                       db_update_sp: str,
+                       status_sp: str,
+                       status_params_failed: str,
+                       uuid: str,
+                       table_name: str) -> str:
     """Create a new case folder if it doesn't exist."""
     case_folder_data = case_handler.create_case_folder_data(case_type, person_full_name, person_go_id, ssn)
     response = case_handler.create_case_folder(case_folder_data, '/_goapi/Cases')
-    return response['CaseID']
+    if response.ok:
+        case_folder_id = response.json()['CasesInfo'][0]['CaseID']
+        response_data_params = {
+            "StepName": ("str", "case_folder"),
+            "JsonFragment": ("str", f'{{"CaseFolderId": "{case_folder_id}"}}'),
+            "uuid": ("str", f'{uuid}'),
+            "TableName": ("str", f'{table_name}')
+        }
+        db_update_result = execute_stored_procedure(conn_string, db_update_sp, response_data_params)
+        if not db_update_result['success']:
+            update_status(conn_string, status_sp, status_params_failed)
+    else:
+        update_status(conn_string, status_sp, status_params_failed)
+        case_folder_id = None
+    return case_folder_id
 
 
-def create_case(case_handler, orchestrator_connection, person_full_name, ssn, case_type, case_folder_id, oc_args_json):
+def create_case(case_handler,
+                orchestrator_connection: str,
+                person_full_name: str,
+                ssn: str,
+                case_type: str,
+                case_folder_id: str,
+                oc_args_json: str,
+                conn_string: str,
+                db_update_sp: str,
+                status_sp: str,
+                status_params_failed: str,
+                uuid: str,
+                table_name: str):
     """Create a new case."""
     match orchestrator_connection.process_name:
         case "Journalisering_Modersmaal":
@@ -101,6 +170,23 @@ def create_case(case_handler, orchestrator_connection, person_full_name, ssn, ca
         oc_args_json['supplementary_departments'],
         True
     )
-    print(case_data)
     response = case_handler.create_case(case_data, '/_goapi/Cases')
-    return response
+    if response.ok:
+        case_id = response.json()['CasesInfo'][0]['CaseID']
+        response_data_params = {
+            "StepName": ("str", "case"),
+            "JsonFragment": ("str", f'{{"CaseId": "{case_id}"}}'),
+            "uuid": ("str", f'{uuid}'),
+            "TableName": ("str", f'{table_name}')
+        }
+        db_update_result = execute_stored_procedure(conn_string, db_update_sp, response_data_params)
+        if not db_update_result['success']:
+            update_status(conn_string, status_sp, status_params_failed)
+    else:
+        update_status(conn_string, status_sp, status_params_failed)
+        case_id = None
+    return case_id
+
+
+def journalize_file(case_id: str, data_obj_json):
+    pass
