@@ -95,12 +95,10 @@ def create_case(case_handler, orchestrator_connection, person_full_name, ssn, ca
         oc_args_json['case_profile_name'],
         case_title,
         case_folder_id,
-        oc_args_json['supplementary_case_owner_id'],
-        oc_args_json['supplementary_case_owner_name'],
+        oc_args_json['supplementary_case_owners'],
         oc_args_json['department_id'],
         oc_args_json['department_name'],
-        oc_args_json['supplementary_department_id'],
-        oc_args_json['supplementary_department_name'],
+        oc_args_json['supplementary_departments'],
         True
     )
     print(case_data)
