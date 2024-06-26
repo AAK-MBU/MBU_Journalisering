@@ -1,6 +1,7 @@
 """This module contains the main process of the robot."""
 
 import json
+import os
 
 from OpenOrchestrator.orchestrator_connection.connection import OrchestratorConnection
 
@@ -25,8 +26,8 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         uuid = form['uuid']
         orchestrator_connection.log_info(uuid)
 
-        form_data = form['data']
-        ssn = form_data['barnets_cpr_nummer'].replace('-', '')
+        parsed_form = json.loads(form['data'])
+        ssn = parsed_form['data']['barnets_cpr_nummer'].replace('-', '')
 
         status_params_failed = {
             "Status": "FAILED",
@@ -95,5 +96,6 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
 
 
 if __name__ == "__main__":
-    oc = OrchestratorConnection.create_connection_from_args()
+    #  oc = OrchestratorConnection.create_connection_from_args()
+    oc = OrchestratorConnection("test", os.getenv('OpenOrchestratorConnString'), os.getenv('OpenOrchestratorKey'), '{"table_name":"Hub_GO_Modersmaal","case_type":"BOR","status_sp":"rpa.Hub_UpdateProcessStatus","db_update_sp":"rpa.Hub_AddOrUpdateJson","case_data":{"case_owner_id":"1204","case_owner_name":"Rikke Agerholm Andersen(azktefx)","case_profile_id":"526","case_profile_name":"MBU SK Modersmålsundervisning","case_title":"","case_folder_id":"","supplementary_case_owners":"","department_id":"459","department_name":"Møllevangskolen - Administration","supplementary_departments":"","return_when_case_fully_created":"True"}}')
     process(oc)
