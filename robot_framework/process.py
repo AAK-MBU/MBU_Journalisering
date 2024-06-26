@@ -61,7 +61,17 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         )
 
         if not case_folder_id:
-            case_folder_id = pf.create_case_folder(case_handler, oc_args_json['case_type'], person_full_name, person_go_id, ssn)
+            case_folder_id = pf.create_case_folder(case_handler,
+                                                   oc_args_json['case_type'],
+                                                   person_full_name,
+                                                   person_go_id,
+                                                   ssn,
+                                                   credentials['conn_string'],
+                                                   oc_args_json['db_update_sp'],
+                                                   oc_args_json['status_sp'],
+                                                   status_params_failed,
+                                                   uuid,
+                                                   oc_args_json['table_name'])
 
         #  Step 4: Create a new citizen case
         case_id = pf.create_case(
