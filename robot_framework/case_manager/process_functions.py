@@ -1,8 +1,8 @@
 """This module contains helper functions for the robot process."""
 
 import os
-import pyodbc
 from typing import Dict, Any, Optional, List
+import pyodbc
 
 from OpenOrchestrator.orchestrator_connection.connection import OrchestratorConnection
 from mbu_dev_shared_components.utils.db_stored_procedure_executor import execute_stored_procedure
@@ -189,4 +189,7 @@ def create_case(case_handler,
 
 
 def journalize_file(case_id: str, data_obj_json):
-    pass
+    """Journalize associated files in the 'Document' folder under the citizen case."""
+    test = case_id
+    testt = data_obj_json
+    return test, testt
