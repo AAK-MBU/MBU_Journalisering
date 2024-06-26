@@ -61,12 +61,10 @@ class CaseHandler:
                          case_profile_name: str,
                          case_title: str,
                          case_folder_id: str,
-                         supplementary_case_owner_id: str = None,
-                         supplementary_case_owner_name: str = None,
+                         supplementary_case_owners: str = None,
                          department_id: str = None,
                          department_name: str = None,
-                         supplementary_department_id: str = None,
-                         supplementary_department_name: str = None,
+                         supplementary_departments: str = None,
                          return_when_case_fully_created: bool = True) -> str:
         """
         Creates JSON data for a case.
@@ -83,8 +81,9 @@ class CaseHandler:
             f'ows_CCMParentCase=\"{case_folder_id};#BOR\" '
             f'ows_Afdeling=\"{department_id};#{department_name}\" '
             f'ows_Sagsprofil_BOR=\"{case_profile_id};#{case_profile_name}\" '
-            f'ows_SupplerendeSagsbehandlere=\"{supplementary_case_owner_id};#{supplementary_case_owner_name}\" '
-            f'ows_SupplerendeAfdelinger=\"{supplementary_department_id};#{supplementary_department_name}\" />'
+            + (f'ows_SupplerendeSagsbehandlere=\"{supplementary_case_owners}\" ' if supplementary_case_owners else '')
+            + (f'ows_SupplerendeAfdelinger=\"{supplementary_departments}\" ' if supplementary_departments else '')
+            + '/>'
         )
         return self.case_obj.case_data_json(case_type_prefix, xml_metadata, return_when_case_fully_created)
 
