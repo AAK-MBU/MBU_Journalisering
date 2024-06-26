@@ -18,13 +18,15 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
     credentials = pf.get_credentials_and_constants(orchestrator_connection)
     forms_data = pf.get_forms_data(credentials['conn_string'], oc_args_json["table_name"])
 
-    for form_data in forms_data:
+    for form in forms_data:
         case_handler = CaseHandler(credentials['endpoint'], credentials['username'], credentials['password'])
         case_data_handler = CaseDataJson()
 
-        uuid = form_data['uuid']
-        ssn = form_data['barnets_cpr_nummer'].replace('-', '')
+        uuid = form['uuid']
         orchestrator_connection.log_info(uuid)
+
+        form_data = form['data']
+        ssn = form_data['barnets_cpr_nummer'].replace('-', '')
 
         status_params_failed = {
             "Status": "FAILED",
