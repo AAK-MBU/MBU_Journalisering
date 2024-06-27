@@ -16,17 +16,17 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
     oc_args_json = json.loads(orchestrator_connection.process_arguments)
 
     credentials = pf.get_credentials_and_constants(orchestrator_connection)
-    forms_data = pf.get_forms_data(credentials['conn_string'], oc_args_json["table_name"])
+    forms_data = pf.get_forms_data(credentials['sql_conn_string'], oc_args_json["table_name"])
 
     for form in forms_data:
-        case_handler = CaseHandler(credentials['endpoint'], credentials['username'], credentials['password'])
+        case_handler = CaseHandler(credentials['go_api_endpoint'], credentials['go_api_username'], credentials['go_api_password'])
         case_data_handler = CaseDataJson()
 
         uuid = form['uuid']
         orchestrator_connection.log_info(uuid)
 
-        form_data = form['data']
-        ssn = form_data['barnets_cpr_nummer'].replace('-', '')
+        parsed_form = json.loads(form['data'])
+        ssn = parsed_form['data']['barnets_cpr_nummer'].replace('-', '')
 
         status_params_failed = {
             "Status": "FAILED",
@@ -38,7 +38,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         person_full_name, person_go_id = pf.contact_lookup(
             case_handler,
             ssn,
-            credentials['conn_string'],
+            credentials['sql_conn_string'],
             oc_args_json['db_update_sp'],
             oc_args_json['status_sp'],
             status_params_failed,
@@ -54,7 +54,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
             person_full_name,
             person_go_id,
             ssn,
-            credentials['conn_string'],
+            credentials['sql_conn_string'],
             oc_args_json['db_update_sp'],
             oc_args_json['status_sp'],
             status_params_failed,
@@ -68,7 +68,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                                                    person_full_name,
                                                    person_go_id,
                                                    ssn,
-                                                   credentials['conn_string'],
+                                                   credentials['sql_conn_string'],
                                                    oc_args_json['db_update_sp'],
                                                    oc_args_json['status_sp'],
                                                    status_params_failed,
@@ -84,14 +84,27 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
             oc_args_json['case_type'],
             case_folder_id,
             oc_args_json['case_data'],
-            credentials['conn_string'],
+            credentials['sql_conn_string'],
             oc_args_json['db_update_sp'],
             oc_args_json['status_sp'],
             status_params_failed,
             uuid,
             oc_args_json['table_name']
         )
-        print(case_id)
+
+        #  Step 5: Journalize files
+        pf.journalize_file(case_id,
+                           parsed_form,
+                           credentials['os2_api_key'],
+                           credentials['go_api_endpoint'],
+                           credentials['go_api_username'],
+                           credentials['go_api_password'],
+                           credentials['sql_conn_string'],
+                           oc_args_json['db_update_sp'],
+                           oc_args_json['status_sp'],
+                           status_params_failed,
+                           uuid,
+                           oc_args_json['table_name'])
 
 
 if __name__ == "__main__":
