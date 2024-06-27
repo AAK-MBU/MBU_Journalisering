@@ -1,7 +1,6 @@
 """This module contains the main process of the robot."""
 
 import json
-import os
 
 from OpenOrchestrator.orchestrator_connection.connection import OrchestratorConnection
 
@@ -17,10 +16,10 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
     oc_args_json = json.loads(orchestrator_connection.process_arguments)
 
     credentials = pf.get_credentials_and_constants(orchestrator_connection)
-    forms_data = pf.get_forms_data(credentials['conn_string'], oc_args_json["table_name"])
+    forms_data = pf.get_forms_data(credentials['sql_conn_string'], oc_args_json["table_name"])
 
     for form in forms_data:
-        case_handler = CaseHandler(credentials['endpoint'], credentials['username'], credentials['password'])
+        case_handler = CaseHandler(credentials['go_api_endpoint'], credentials['go_api_username'], credentials['go_api_password'])
         case_data_handler = CaseDataJson()
 
         uuid = form['uuid']
@@ -39,7 +38,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         person_full_name, person_go_id = pf.contact_lookup(
             case_handler,
             ssn,
-            credentials['conn_string'],
+            credentials['sql_conn_string'],
             oc_args_json['db_update_sp'],
             oc_args_json['status_sp'],
             status_params_failed,
@@ -55,7 +54,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
             person_full_name,
             person_go_id,
             ssn,
-            credentials['conn_string'],
+            credentials['sql_conn_string'],
             oc_args_json['db_update_sp'],
             oc_args_json['status_sp'],
             status_params_failed,
@@ -69,7 +68,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                                                    person_full_name,
                                                    person_go_id,
                                                    ssn,
-                                                   credentials['conn_string'],
+                                                   credentials['sql_conn_string'],
                                                    oc_args_json['db_update_sp'],
                                                    oc_args_json['status_sp'],
                                                    status_params_failed,
@@ -85,17 +84,29 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
             oc_args_json['case_type'],
             case_folder_id,
             oc_args_json['case_data'],
-            credentials['conn_string'],
+            credentials['sql_conn_string'],
             oc_args_json['db_update_sp'],
             oc_args_json['status_sp'],
             status_params_failed,
             uuid,
             oc_args_json['table_name']
         )
-        print(case_id)
+
+        #  Step 5: Journalize files
+        pf.journalize_file(case_id,
+                           parsed_form,
+                           credentials['os2_api_key'],
+                           credentials['go_api_endpoint'],
+                           credentials['go_api_username'],
+                           credentials['go_api_password'],
+                           credentials['sql_conn_string'],
+                           oc_args_json['db_update_sp'],
+                           oc_args_json['status_sp'],
+                           status_params_failed,
+                           uuid,
+                           oc_args_json['table_name'])
 
 
 if __name__ == "__main__":
-    #  oc = OrchestratorConnection.create_connection_from_args()
-    oc = OrchestratorConnection("test", os.getenv('OpenOrchestratorConnString'), os.getenv('OpenOrchestratorKey'), '{"table_name":"Hub_GO_Modersmaal","case_type":"BOR","status_sp":"rpa.Hub_UpdateProcessStatus","db_update_sp":"rpa.Hub_AddOrUpdateJson","case_data":{"case_owner_id":"1204","case_owner_name":"Rikke Agerholm Andersen(azktefx)","case_profile_id":"526","case_profile_name":"MBU SK Modersmålsundervisning","case_title":"","case_folder_id":"","supplementary_case_owners":"","department_id":"459","department_name":"Møllevangskolen - Administration","supplementary_departments":"","return_when_case_fully_created":"True"}}')
+    oc = OrchestratorConnection.create_connection_from_args()
     process(oc)
