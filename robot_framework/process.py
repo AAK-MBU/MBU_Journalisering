@@ -139,5 +139,4 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
 
 if __name__ == "__main__":
     #  oc = OrchestratorConnection.create_connection_from_args()
-    oc = OrchestratorConnection("Journalisering_Modersmaal", os.getenv('OpenOrchestratorConnString'), os.getenv('OpenOrchestratorKey'), '{"table_name":"Hub_GO_Modersmaal","case_type":"BOR","hub_update_reponse_data":"rpa.Hub_AddOrUpdateJson","hub_update_process_status":"rpa.Hub_UpdateProcessStatus","db_update_sp":"rpa.Hub_AddOrUpdateJson","case_data":{"case_owner_id":"1204","case_owner_name":"Rikke Agerholm Andersen(azktefx)","case_profile_id":"526","case_profile_name":"MBU SK Modersmålsundervisning","case_title":"","case_folder_id":"","supplementary_case_owners":"","department_id":"459","department_name":"Møllevangskolen - Administration","supplementary_departments":"","return_when_case_fully_created":"true"}}')
     process(oc)
