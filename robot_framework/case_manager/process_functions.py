@@ -60,7 +60,9 @@ def contact_lookup(case_handler,
     """Perform contact lookup and update database."""
     person_full_name = None
     person_go_id = None
-    response = case_handler.contact_lookup(ssn, '/borgersager/_goapi/contacts/readitem')
+    response = case_handler.contact_lookup(ssn, '/borgersager/_goapi/contacts/readite')
+    print(response)
+    print(response.ok)
 
     if response.ok:
         person_full_name = response.json()["FullName"]
@@ -74,8 +76,10 @@ def contact_lookup(case_handler,
         sql_update_result = execute_stored_procedure(conn_string, db_update_sp, sql_data_params)
         if not sql_update_result['success']:
             update_status(conn_string, status_sp, status_params_failed)
+            raise RuntimeError("Contact lookup failed.")
     else:
         update_status(conn_string, status_sp, status_params_failed)
+        raise RuntimeError("Contact lookup failed.")
     return person_full_name, person_go_id
 
 
