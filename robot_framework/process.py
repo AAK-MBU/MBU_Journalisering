@@ -53,14 +53,14 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                 case_handler,
                 ssn,
                 credentials['sql_conn_string'],
-                oc_args_json['db_update_sp'],
-                oc_args_json['hub_update_reponse_data'],
+                oc_args_json['hub_update_response_data'],
+                oc_args_json['hub_update_process_status'],
                 status_params_failed,
                 uuid,
                 oc_args_json['table_name']
             )
         except Exception:
-            execute_stored_procedure(credentials['sql_conn_string'], oc_args_json['hub_update_process_status'], status_params_failed)
+            continue
 
         #  Step 2: Check for existing citizen folder
         try:
@@ -72,30 +72,33 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                 person_go_id,
                 ssn,
                 credentials['sql_conn_string'],
-                oc_args_json['db_update_sp'],
-                oc_args_json['hub_update_reponse_data'],
+                oc_args_json['hub_update_response_data'],
+                oc_args_json['hub_update_process_status'],
                 status_params_failed,
                 uuid,
                 oc_args_json['table_name']
             )
         except Exception:
-            execute_stored_procedure(credentials['sql_conn_string'], oc_args_json['hub_update_process_status'], status_params_failed)
+            continue
 
+        print(case_folder_id)
         if not case_folder_id:
             try:
-                case_folder_id = pf.create_case_folder(case_handler,
-                                                    oc_args_json['case_type'],
-                                                    person_full_name,
-                                                    person_go_id,
-                                                    ssn,
-                                                    credentials['sql_conn_string'],
-                                                    oc_args_json['db_update_sp'],
-                                                    oc_args_json['hub_update_reponse_data'],
-                                                    status_params_failed,
-                                                    uuid,
-                                                    oc_args_json['table_name'])
+                case_folder_id = pf.create_case_folder(
+                    case_handler,
+                    oc_args_json['case_type'],
+                    person_full_name,
+                    person_go_id,
+                    ssn,
+                    credentials['sql_conn_string'],
+                    oc_args_json['hub_update_response_data'],
+                    oc_args_json['hub_update_process_status'],
+                    status_params_failed,
+                    uuid,
+                    oc_args_json['table_name']
+                )
             except Exception:
-                execute_stored_procedure(credentials['sql_conn_string'], oc_args_json['hub_update_process_status'], status_params_failed)
+                continue
 
         #  Step 4: Create a new citizen case
         try:
@@ -108,36 +111,43 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                 case_folder_id,
                 oc_args_json['case_data'],
                 credentials['sql_conn_string'],
-                oc_args_json['db_update_sp'],
-                oc_args_json['hub_update_reponse_data'],
+                oc_args_json['hub_update_response_data'],
+                oc_args_json['hub_update_process_status'],
                 status_params_failed,
                 uuid,
                 oc_args_json['table_name']
             )
         except Exception:
-            execute_stored_procedure(credentials['sql_conn_string'], oc_args_json['hub_update_process_status'], status_params_failed)
+            continue
 
         #  Step 5: Journalize files
         try:
-            pf.journalize_file(case_id,
-                            parsed_form,
-                            credentials['os2_api_key'],
-                            credentials['go_api_endpoint'],
-                            credentials['go_api_username'],
-                            credentials['go_api_password'],
-                            credentials['sql_conn_string'],
-                            oc_args_json['db_update_sp'],
-                            oc_args_json['hub_update_reponse_data'],
-                            status_params_failed,
-                            uuid,
-                            oc_args_json['table_name'])
+            pf.journalize_file(
+                case_id,
+                parsed_form,
+                credentials['os2_api_key'],
+                credentials['go_api_endpoint'],
+                credentials['go_api_username'],
+                credentials['go_api_password'],
+                credentials['sql_conn_string'],
+                oc_args_json['hub_update_response_data'],
+                oc_args_json['hub_update_process_status'],
+                status_params_failed,
+                uuid,
+                oc_args_json['table_name']
+            )
         except Exception:
-            execute_stored_procedure(credentials['sql_conn_string'], oc_args_json['hub_update_process_status'], status_params_failed)
+            continue
 
         execute_stored_procedure(credentials['sql_conn_string'], oc_args_json['hub_update_process_status'], status_params_success)
 
 
 if __name__ == "__main__":
-    #  oc = OrchestratorConnection.create_connection_from_args()
-
+    # oc = OrchestratorConnection.create_connection_from_args()
+    oc = OrchestratorConnection(
+        "test",
+        os.getenv('OpenOrchestratorConnString'),
+        os.getenv('OpenOrchestratorKey'),
+        r'{"table_name":"Hub_GO_TEST","case_type":"BOR","hub_update_response_data":"rpa.Hub_AddOrUpdateJson","hub_update_process_status":"rpa.Hub_UpdateProcessStatus","hub_update_response_data":"rpa.Hub_AddOrUpdateJson","case_data":{"case_owner_id":"2471","case_owner_name":"Rune Kristian Ustrup (az49337)","case_profile_id":"34","case_profile_name":"Til uddannelsesbrug","case_title":"","case_folder_id":"","supplementary_case_owners":"","department_id":"46","department_name":"Digitalisering MBU","supplementary_departments":"","return_when_case_fully_created":"true"}}'
+    )
     process(oc)
