@@ -1,17 +1,27 @@
 """This module contains helper functions for the robot process."""
 import os
 import json
-import logging
 from typing import Dict, Any, Optional, List
 import pyodbc
+
 from OpenOrchestrator.orchestrator_connection.connection import OrchestratorConnection
+
 from mbu_dev_shared_components.utils.db_stored_procedure_executor import execute_stored_procedure
 from mbu_dev_shared_components.os2forms.documents import download_file_bytes
 from mbu_dev_shared_components.getorganized.documents import upload_file_to_case
+
 from robot_framework.case_manager.url_processing import find_urls, extract_filename_from_url
 
 
-def get_forms_data(conn_string: str, table_name: str, params: Optional[List[Any]] = None, status_params_failed: Dict[str, Any], hub_update_process_status: str) -> List[str]:
+class DatabaseError(Exception):
+    """Custom exception for database related errors."""
+
+
+class RequestError(Exception):
+    """Custom exception for request related errors."""
+
+
+def get_forms_data(conn_string: str, table_name: str, params: Optional[List[Any]] = None) -> List[str]:
     """Retrieve the data for the specific form"""
     try:
         query = f"SELECT uuid, data FROM rpa.rpa.{table_name} WHERE process_status IS NULL"
@@ -22,18 +32,12 @@ def get_forms_data(conn_string: str, table_name: str, params: Optional[List[Any]
                 forms_data = [dict(zip(columns, row)) for row in cursor.fetchall()]
         return forms_data
     except pyodbc.Error as e:
-        execute_stored_procedure(conn_string, hub_update_process_status, status_params_failed)
-        raise
+        raise SystemExit(e) from e
 
-def get_credentials_and_constants(orchestrator_connection: OrchestratorConnection, conn_string: str, hub_update_process_status: str, status_params_failed: Dict[str, Any]) -> Dict[str, Any]:
+
+def get_credentials_and_constants(orchestrator_connection: OrchestratorConnection) -> Dict[str, Any]:
     """Retrieve necessary credentials and constants."""
     try:
-        uuid = orchestrator_connection.get_constant('test_uuid').value
-        ssn = orchestrator_connection.get_credential('test_person').password
-
-        if not any(ssn) or not any(uuid):
-            raise ValueError("No ssn given.")
-        
         credentials = {
             "go_api_endpoint": os.getenv('GoApiBaseUrl'),
             "go_api_username": orchestrator_connection.get_credential('go_api').username,
@@ -43,21 +47,23 @@ def get_credentials_and_constants(orchestrator_connection: OrchestratorConnectio
             "journalizing_tmp_path": orchestrator_connection.get_constant('journalizing_tmp_path').value,
         }
         return credentials
-    except Exception as e:
-        execute_stored_procedure(conn_string, hub_update_process_status, status_params_failed)
-        raise
+    except AttributeError as e:
+        raise SystemExit(e) from e
 
-def update_status(conn_string: str, sp_name: str, params: str) -> None:
-    """Execute stored procedure to update status."""
-    try:
-        execute_stored_procedure(conn_string, sp_name, params)
-    except Exception as e:
-        raise
 
-def contact_lookup(case_handler, ssn: str, conn_string: str, db_update_sp: str, status_sp: str, status_params_failed: str, uuid: str, table_name: str, hub_update_process_status: str) -> str:
+def contact_lookup(
+    case_handler,
+    ssn: str,
+    conn_string: str,
+    update_response_data: str,
+    update_process_status: str,
+    process_status_params_failed: str,
+    uuid: str,
+    table_name: str
+) -> str:
     """Perform contact lookup and update database."""
     try:
-        response = case_handler.contact_lookup(ssn, '/borgersager/_goapi/contacts/readite')
+        response = case_handler.contact_lookup(ssn, '/borgersager/_goapi/contacts/readitem')
         if response.ok:
             person_full_name = response.json()["FullName"]
             person_go_id = response.json()["ID"]
@@ -67,19 +73,34 @@ def contact_lookup(case_handler, ssn: str, conn_string: str, db_update_sp: str, 
                 "uuid": ("str", f'{uuid}'),
                 "TableName": ("str", f'{table_name}')
             }
-            sql_update_result = execute_stored_procedure(conn_string, db_update_sp, sql_data_params)
+            sql_update_result = execute_stored_procedure(conn_string, update_response_data, sql_data_params)
             if not sql_update_result['success']:
-                update_status(conn_string, status_sp, status_params_failed)
-                raise RuntimeError("Contact lookup failed.")
+                raise DatabaseError("SQL - Update response data failed.")
         else:
-            update_status(conn_string, status_sp, status_params_failed)
-            raise RuntimeError("Contact lookup failed.")
+            raise RequestError("Request response failed.")
         return person_full_name, person_go_id
+    except (DatabaseError, RequestError) as e:
+        execute_stored_procedure(conn_string, update_process_status, process_status_params_failed)
+        raise e
     except Exception as e:
-        execute_stored_procedure(conn_string, hub_update_process_status, status_params_failed)
-        raise
+        execute_stored_procedure(conn_string, update_process_status, process_status_params_failed)
+        raise RuntimeError(f"An unexpected error occurred during contact lookup: {e}") from e
 
-def check_case_folder(case_handler, case_data_handler, case_type: str, person_full_name: str, person_go_id: str, ssn: str, conn_string: str, db_update_sp: str, status_sp: str, status_params_failed: str, uuid: str, table_name: str, hub_update_process_status: str) -> str:
+
+def check_case_folder(
+    case_handler,
+    case_data_handler,
+    case_type: str,
+    person_full_name: str,
+    person_go_id: str,
+    ssn: str,
+    conn_string: str,
+    update_response_data: str,
+    update_process_status: str,
+    process_status_params_failed: str,
+    uuid: str,
+    table_name: str
+) -> str:
     """Check if case folder exists and update database."""
     try:
         search_data = case_data_handler.search_case_folder_data_json(case_type, person_full_name, person_go_id, ssn)
@@ -92,18 +113,33 @@ def check_case_folder(case_handler, case_data_handler, case_type: str, person_fu
                 "uuid": ("str", f'{uuid}'),
                 "TableName": ("str", f'{table_name}')
             }
-            sql_update_result = execute_stored_procedure(conn_string, db_update_sp, sql_data_params)
+            sql_update_result = execute_stored_procedure(conn_string, update_response_data, sql_data_params)
             if not sql_update_result['success']:
-                update_status(conn_string, status_sp, status_params_failed)
+                raise DatabaseError("SQL - Update response data failed.")
         else:
-            update_status(conn_string, status_sp, status_params_failed)
-            case_folder_id = None
+            raise RequestError("Request response failed.")
         return case_folder_id
+    except (DatabaseError, RequestError) as e:
+        execute_stored_procedure(conn_string, update_process_status, process_status_params_failed)
+        raise e
     except Exception as e:
-        execute_stored_procedure(conn_string, hub_update_process_status, status_params_failed)
-        raise
+        execute_stored_procedure(conn_string, update_process_status, process_status_params_failed)
+        raise RuntimeError(f"An unexpected error occurred during case folder check: {e}") from e
 
-def create_case_folder(case_handler, case_type: str, person_full_name: str, person_go_id: str, ssn: str, conn_string: str, db_update_sp: str, status_sp: str, status_params_failed: str, uuid: str, table_name: str, hub_update_process_status: str) -> str:
+
+def create_case_folder(
+    case_handler,
+    case_type: str,
+    person_full_name: str,
+    person_go_id: str,
+    ssn: str,
+    conn_string: str,
+    update_response_data: str,
+    update_process_status: str,
+    process_status_params_failed: str,
+    uuid: str,
+    table_name: str
+) -> str:
     """Create a new case folder if it doesn't exist."""
     try:
         case_folder_data = case_handler.create_case_folder_data(case_type, person_full_name, person_go_id, ssn)
@@ -116,18 +152,35 @@ def create_case_folder(case_handler, case_type: str, person_full_name: str, pers
                 "uuid": ("str", f'{uuid}'),
                 "TableName": ("str", f'{table_name}')
             }
-            sql_update_result = execute_stored_procedure(conn_string, db_update_sp, sql_data_params)
+            sql_update_result = execute_stored_procedure(conn_string, update_response_data, sql_data_params)
             if not sql_update_result['success']:
-                update_status(conn_string, status_sp, status_params_failed)
+                raise DatabaseError("SQL - Update response data failed.")
         else:
-            update_status(conn_string, status_sp, status_params_failed)
-            case_folder_id = None
+            raise RequestError("Request response failed.")
         return case_folder_id
+    except (DatabaseError, RequestError) as e:
+        execute_stored_procedure(conn_string, update_process_status, process_status_params_failed)
+        raise e
     except Exception as e:
-        execute_stored_procedure(conn_string, hub_update_process_status, status_params_failed)
-        raise
+        execute_stored_procedure(conn_string, update_process_status, process_status_params_failed)
+        raise RuntimeError(f"An unexpected error occurred during case folder creation: {e}") from e
 
-def create_case(case_handler, orchestrator_connection: str, person_full_name: str, ssn: str, case_type: str, case_folder_id: str, oc_args_json: str, conn_string: str, db_update_sp: str, status_sp: str, status_params_failed: str, uuid: str, table_name: str, hub_update_process_status: str):
+
+def create_case(
+    case_handler,
+    orchestrator_connection: str,
+    person_full_name: str,
+    ssn: str,
+    case_type: str,
+    case_folder_id: str,
+    oc_args_json: str,
+    conn_string: str,
+    update_response_data: str,
+    update_process_status: str,
+    process_status_params_failed: str,
+    uuid: str,
+    table_name: str
+) -> Any:
     """Create a new case."""
     try:
         match orchestrator_connection.process_name:
@@ -135,6 +188,8 @@ def create_case(case_handler, orchestrator_connection: str, person_full_name: st
                 case_title = f"Modersmålsundervisning {person_full_name}"
             case "Journalisering_indmeldelse_i_modtagelsesklasse":
                 case_title = f"Visitering af {person_full_name} {ssn}"
+            case "test":
+                case_title = "test"
 
         case_data = case_handler.create_case_data(
             case_type,
@@ -159,18 +214,34 @@ def create_case(case_handler, orchestrator_connection: str, person_full_name: st
                 "uuid": ("str", f'{uuid}'),
                 "TableName": ("str", f'{table_name}')
             }
-            sql_update_result = execute_stored_procedure(conn_string, db_update_sp, sql_data_params)
+            sql_update_result = execute_stored_procedure(conn_string, update_response_data, sql_data_params)
             if not sql_update_result['success']:
-                update_status(conn_string, status_sp, status_params_failed)
+                raise DatabaseError("SQL - Update response data failed.")
         else:
-            update_status(conn_string, status_sp, status_params_failed)
-            case_id = None
+            raise RequestError("Request response failed.")
         return case_id
+    except (DatabaseError, RequestError) as e:
+        execute_stored_procedure(conn_string, update_process_status, process_status_params_failed)
+        raise e
     except Exception as e:
-        execute_stored_procedure(conn_string, hub_update_process_status, status_params_failed)
-        raise
+        execute_stored_procedure(conn_string, update_process_status, process_status_params_failed)
+        raise RuntimeError(f"An unexpected error occurred during case creation: {e}") from e
 
-def journalize_file(case_id: str, parsed_form: Dict[str, Any], os2_api_key: str, go_api_endpoint: str, go_api_username: str, go_api_password: str, conn_string: str, db_update_sp: str, status_sp: str, status_params_failed: str, uuid: str, table_name: str, hub_update_process_status: str):
+
+def journalize_file(
+    case_id: str,
+    parsed_form: Dict[str, Any],
+    os2_api_key: str,
+    go_api_endpoint: str,
+    go_api_username: str,
+    go_api_password: str,
+    conn_string: str,
+    update_response_data: str,
+    update_process_status: str,
+    process_status_params_failed: str,
+    uuid: str,
+    table_name: str
+):
     """Journalize associated files in the 'Document' folder under the citizen case."""
     try:
         urls = find_urls(parsed_form)
@@ -186,7 +257,7 @@ def journalize_file(case_id: str, parsed_form: Dict[str, Any], os2_api_key: str,
                 "FileName": f"{filename}",
                 "Metadata": "<z:row xmlns:z=\"#RowsetSchema\" />",
                 "Overwrite": "true",
-                "Bytes": file_bytes
+                "Bytes": list(file_bytes)
             }
             endpoint = go_api_endpoint + '/_goapi/Documents/AddToCase'
             response = upload_file_to_case(body, endpoint, go_api_username, go_api_password)
@@ -195,19 +266,19 @@ def journalize_file(case_id: str, parsed_form: Dict[str, Any], os2_api_key: str,
                 document_json_str = {"DocumentId": str(document_id)}
                 documents.append(document_json_str)
             else:
-                update_status(conn_string, status_sp, status_params_failed)
-
+                raise RequestError("Request response failed.")
         sql_data_params = {
             "StepName": ("str", "Case Files"),
             "JsonFragment": ("str", f'{json.dumps(documents)}'),
             "uuid": ("str", f'{uuid}'),
             "TableName": ("str", f'{table_name}')
         }
-        sql_update_result = execute_stored_procedure(conn_string, db_update_sp, sql_data_params)
+        sql_update_result = execute_stored_procedure(conn_string, update_response_data, sql_data_params)
         if not sql_update_result['success']:
-            update_status(conn_string, status_sp, status_params_failed)
-        else:
-            update_status(conn_string, status_sp, status_params_failed)
+            raise DatabaseError("SQL - Update response data failed.")
+    except (DatabaseError, RequestError) as e:
+        execute_stored_procedure(conn_string, update_process_status, process_status_params_failed)
+        raise e
     except Exception as e:
-        execute_stored_procedure(conn_string, hub_update_process_status, status_params_failed)
-        raise
+        execute_stored_procedure(conn_string, update_process_status, process_status_params_failed)
+        raise RuntimeError(f"An unexpected error occurred during file journalization: {e}") from e

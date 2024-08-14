@@ -1,4 +1,4 @@
-"""Module to handle journalisering functionality"""
+"""Module to handle journalisering functionality in GetOrganized."""
 
 from mbu_dev_shared_components.getorganized import objects
 from mbu_dev_shared_components.getorganized import cases
@@ -33,11 +33,14 @@ class CaseHandler:
             return f"{self.api_endpoint}{path}"
         return self.api_endpoint
 
-    def create_case_folder_data(self, case_type_prefix: objects.CaseTypePrefix,
-                                person_full_name: str,
-                                person_id: str,
-                                person_ssn: str,
-                                return_when_case_fully_created: bool = True) -> str:
+    def create_case_folder_data(
+        self,
+        case_type_prefix: objects.CaseTypePrefix,
+        person_full_name: str,
+        person_id: str,
+        person_ssn: str,
+        return_when_case_fully_created: bool = True
+    ) -> str:
         """
         Creates JSON data for a case folder.
 
@@ -53,19 +56,21 @@ class CaseHandler:
                                             xml_metadata,
                                             return_when_case_fully_created)
 
-    def create_case_data(self,
-                         case_type_prefix: objects.CaseTypePrefix,
-                         case_owner_id: str,
-                         case_owner_name: str,
-                         case_profile_id: str,
-                         case_profile_name: str,
-                         case_title: str,
-                         case_folder_id: str,
-                         supplementary_case_owners: str = None,
-                         department_id: str = None,
-                         department_name: str = None,
-                         supplementary_departments: str = None,
-                         return_when_case_fully_created: bool = True) -> str:
+    def create_case_data(
+        self,
+        case_type_prefix: objects.CaseTypePrefix,
+        case_owner_id: str,
+        case_owner_name: str,
+        case_profile_id: str,
+        case_profile_name: str,
+        case_title: str,
+        case_folder_id: str,
+        supplementary_case_owners: str = None,
+        department_id: str = None,
+        department_name: str = None,
+        supplementary_departments: str = None,
+        return_when_case_fully_created: bool = True
+    ) -> str:
         """
         Creates JSON data for a case.
 
