@@ -169,17 +169,17 @@ def create_case_folder(
 def create_case(
     case_handler,
     orchestrator_connection: str,
-    person_full_name: str,
-    ssn: str,
     case_type: str,
-    case_folder_id: str,
     oc_args_json: str,
     conn_string: str,
     update_response_data: str,
     update_process_status: str,
     process_status_params_failed: str,
     uuid: str,
-    table_name: str
+    table_name: str,
+    ssn: str = None,
+    person_full_name: str = None,
+    case_folder_id: str = None
 ) -> Any:
     """Create a new case."""
     try:
@@ -189,10 +189,11 @@ def create_case(
             case "Journalisering_indmeldelse_i_modtagelsesklasse":
                 case_title = f"Visitering af {person_full_name} {ssn}"
             case "test":
-                case_title = "test"
+                case_title = "test auto jour emn"
 
         case_data = case_handler.create_case_data(
             case_type,
+            oc_args_json['case_category'],
             oc_args_json['case_owner_id'],
             oc_args_json['case_owner_name'],
             oc_args_json['case_profile_id'],
@@ -203,8 +204,13 @@ def create_case(
             oc_args_json['department_id'],
             oc_args_json['department_name'],
             oc_args_json['supplementary_departments'],
+            oc_args_json['kle_number'],
+            oc_args_json['facet'],
+            oc_args_json['start_date'],
+            oc_args_json['special_group'],
             True
         )
+        print(case_data)
         response = case_handler.create_case(case_data, '/_goapi/Cases')
         if response.ok:
             case_id = response.json()['CaseID']

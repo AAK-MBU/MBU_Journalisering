@@ -59,16 +59,21 @@ class CaseHandler:
     def create_case_data(
         self,
         case_type_prefix: objects.CaseTypePrefix,
+        case_category: str,
         case_owner_id: str,
         case_owner_name: str,
         case_profile_id: str,
         case_profile_name: str,
         case_title: str,
-        case_folder_id: str,
+        case_folder_id: str = None,
         supplementary_case_owners: str = None,
         department_id: str = None,
         department_name: str = None,
         supplementary_departments: str = None,
+        kle_number: str = None,
+        facet: str = None,
+        start_date: str = None,
+        special_group: str = None,
         return_when_case_fully_created: bool = True
     ) -> str:
         """
@@ -78,18 +83,23 @@ class CaseHandler:
         - str: JSON string of case data.
         """
         xml_metadata = (
-            '<z:row xmlns:z=\"#RowsetSchema\" '
-            'ows_CaseStatus=\"Åben\" '
-            'ows_CaseCategory=\"Standard\" '
-            f'ows_Title=\"{case_title}\" '
-            f'ows_CaseOwner=\"{case_owner_id};#{case_owner_name}\" '
-            f'ows_CCMParentCase=\"{case_folder_id};#BOR\" '
-            f'ows_Afdeling=\"{department_id};#{department_name}\" '
-            f'ows_Sagsprofil_BOR=\"{case_profile_id};#{case_profile_name}\" '
-            + (f'ows_SupplerendeSagsbehandlere=\"{supplementary_case_owners}\" ' if supplementary_case_owners else '')
-            + (f'ows_SupplerendeAfdelinger=\"{supplementary_departments}\" ' if supplementary_departments else '')
-            + '/>'
-        )
+                    '<z:row xmlns:z=\"#RowsetSchema\" '
+                    'ows_CaseStatus=\"Åben\" '
+                    f'ows_CaseCategory=\"{case_category}\" '
+                    f'ows_Title=\"{case_title}\" '
+                    f'ows_CaseOwner=\"{case_owner_id};#{case_owner_name}\" '
+                    f'ows_Afdeling=\"{department_id};#{department_name}\" '
+                    f'ows_Sagsprofil_{case_type_prefix}=\"{case_profile_id};#{case_profile_name}\" '
+                    + (f'ows_CCMParentCase=\"{case_folder_id};#{case_type_prefix}\" ' if case_folder_id else '')
+                    + (f'ows_SupplerendeSagsbehandlere=\"{supplementary_case_owners}\" ' if supplementary_case_owners else '')
+                    + (f'ows_SupplerendeAfdelinger=\"{supplementary_departments}\" ' if supplementary_departments else '')
+                    + (f'ows_KLENummer=\"{kle_number}\" ' if kle_number else '')
+                    + (f'ows_Facet=\"{facet}\" ' if facet else '')
+                    + (f'ows_Modtaget=\"{start_date}\" ' if start_date else '')
+                    + (f'ows_SpecialGroup=\"{special_group}\" ' if special_group else '')
+                    + '/>'
+                )
+
         return self.case_obj.case_data_json(case_type_prefix, xml_metadata, return_when_case_fully_created)
 
     def search_for_case_folder(self, case_folder_search_data: str, endpoint_path: str):
