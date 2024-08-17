@@ -152,6 +152,6 @@ if __name__ == "__main__":
         "test",
         os.getenv('OpenOrchestratorConnString'),
         os.getenv('OpenOrchestratorKey'),
-        r'{"table_name":"Hub_GO_TEST","case_type":"EMN","hub_update_response_data":"rpa.Hub_AddOrUpdateJson","hub_update_process_status":"rpa.Hub_UpdateProcessStatus","hub_update_response_data":"rpa.Hub_AddOrUpdateJson","case_data":{"case_category":"Standard","case_owner_id":"2471","case_owner_name":"Rune Kristian Ustrup (az49337)","case_profile_id":"34","case_profile_name":"Til uddannelsesbrug","case_title":"","case_folder_id":"","supplementary_case_owners":"","department_id":"46","department_name":"Digitalisering MBU","supplementary_departments":"","kle_number":"","facet":"","start_date":"2024-08-16 00:00:00","special_group":"","return_when_case_fully_created":"true"}}'
+        ""
     )
     process(oc)
