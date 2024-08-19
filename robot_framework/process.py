@@ -106,7 +106,6 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                 case_folder_id
             )
         except Exception as e:
-            print(e)
             continue
 
         orchestrator_connection.log_trace("Journalize files.")

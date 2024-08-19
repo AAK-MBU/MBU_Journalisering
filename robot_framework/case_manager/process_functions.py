@@ -106,16 +106,25 @@ def check_case_folder(
         search_data = case_data_handler.search_case_folder_data_json(case_type, person_full_name, person_go_id, ssn)
         response = case_handler.search_for_case_folder(search_data, '/_goapi/cases/findbycaseproperties')
         if response.ok:
-            case_folder_id = response.json()['CasesInfo'][0]['CaseID']
-            sql_data_params = {
-                "StepName": ("str", "CaseFolder"),
-                "JsonFragment": ("str", f'{{"CaseFolderId": "{case_folder_id}"}}'),
-                "uuid": ("str", f'{uuid}'),
-                "TableName": ("str", f'{table_name}')
-            }
-            sql_update_result = execute_stored_procedure(conn_string, update_response_data, sql_data_params)
-            if not sql_update_result['success']:
-                raise DatabaseError("SQL - Update response data failed.")
+            cases_info = response.json().get('CasesInfo', [])
+            if cases_info:
+                case_folder_id = cases_info[0].get('CaseID', None)
+            else:
+                case_folder_id = None
+
+            if case_folder_id:
+                sql_data_params = {
+                    "StepName": ("str", "CaseFolder"),
+                    "JsonFragment": ("str", f'{{"CaseFolderId": "{case_folder_id}"}}'),
+                    "uuid": ("str", f'{uuid}'),
+                    "TableName": ("str", f'{table_name}')
+                }
+                sql_update_result = execute_stored_procedure(conn_string, update_response_data, sql_data_params)
+                if not sql_update_result['success']:
+                    raise DatabaseError("SQL - Update response data failed.")
+            else:
+                print("No CaseID found. Setting case_folder_id to None.")
+                case_folder_id = None
         else:
             raise RequestError("Request response failed.")
         return case_folder_id
@@ -145,7 +154,7 @@ def create_case_folder(
         case_folder_data = case_handler.create_case_folder_data(case_type, person_full_name, person_go_id, ssn)
         response = case_handler.create_case_folder(case_folder_data, '/_goapi/Cases')
         if response.ok:
-            case_folder_id = response.json()['CasesInfo'][0]['CaseID']
+            case_folder_id = response.json()['CaseID']
             sql_data_params = {
                 "StepName": ("str", "CaseFolder"),
                 "JsonFragment": ("str", f'{{"CaseFolderId": "{case_folder_id}"}}'),
