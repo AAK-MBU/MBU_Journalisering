@@ -1,5 +1,4 @@
 """Module to handle journalisering functionality in GetOrganized."""
-
 from mbu_dev_shared_components.getorganized import objects
 from mbu_dev_shared_components.getorganized import cases
 from mbu_dev_shared_components.getorganized import contacts
@@ -47,14 +46,15 @@ class CaseHandler:
         Returns:
         - str: JSON string of case folder data.
         """
-        xml_metadata = {
-            '<z:row xmlns:z=\"#RowsetSchema\"',
-            'ows_CaseCategory=\"Borgermappe\"',
-            f'ows_CCMContactData=\"{person_full_name};#{person_id};#{person_ssn};#;#\" />'
-        }
-        return self.case_obj.case_data_json(case_type_prefix,
-                                            xml_metadata,
-                                            return_when_case_fully_created)
+        xml_metadata = (
+                    '<z:row xmlns:z=\"#RowsetSchema\" '
+                    'ows_CaseStatus=\"Åben\" '
+                    f'ows_CaseCategory=\"Borgermappe\" '
+                    f'ows_CCMContactData=\"{person_full_name};#{person_id};#{person_ssn};#;#\" '
+                    + '/>'
+                )
+
+        return self.case_obj.case_data_json(case_type_prefix, xml_metadata, return_when_case_fully_created)
 
     def create_case_data(
         self,
