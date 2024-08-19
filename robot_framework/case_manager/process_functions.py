@@ -168,7 +168,7 @@ def create_case_folder(
 
 def create_case(
     case_handler,
-    orchestrator_connection: str,
+    os2form_webform_id: str,
     case_type: str,
     oc_args_json: str,
     conn_string: str,
@@ -183,13 +183,14 @@ def create_case(
 ) -> Any:
     """Create a new case."""
     try:
-        match orchestrator_connection.process_name:
-            case "Journalisering_Modersmaal":
+        #  Define the title of the case for each webform id.
+        match os2form_webform_id:
+            case "tilmelding_til_modersmaalsunderv":
                 case_title = f"Modersmålsundervisning {person_full_name}"
-            case "Journalisering_indmeldelse_i_modtagelsesklasse":
+            case "indmeldelse_i_modtagelsesklasse":
                 case_title = f"Visitering af {person_full_name} {ssn}"
-            case "test":
-                case_title = "test auto jour emn"
+            case "ansoegning_om_koersel_af_skoleel" | "ansoegning_om_midlertidig_koerse":
+                case_title = f"Kørsel til {person_full_name}"
 
         case_data = case_handler.create_case_data(
             case_type,
@@ -210,7 +211,6 @@ def create_case(
             oc_args_json['special_group'],
             True
         )
-        print(case_data)
         response = case_handler.create_case(case_data, '/_goapi/Cases')
         if response.ok:
             case_id = response.json()['CaseID']

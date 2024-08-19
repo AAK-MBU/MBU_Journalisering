@@ -27,7 +27,15 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         orchestrator_connection.log_trace(f"UUID: {uuid}")
 
         parsed_form = json.loads(form['data'])
-        ssn = parsed_form['data']['barnets_cpr_nummer'].replace('-', '')
+        match oc_args_json['os2form_webform_id']:
+            case "tilmelding_til_modersmaalsunderv" | "indmeldelse_i_modtagelsesklasse" | "ansoegning_om_koersel_af_skoleel" | "ansoegning_om_midlertidig_koerse":
+                if 'cpr_barnets_nummer' in parsed_form['data']:
+                    ssn = parsed_form['data']['cpr_barnets_nummer'].replace('-', '')
+                elif 'barnets_cpr_nummer' in parsed_form['data']:
+                    ssn = parsed_form['data']['barnets_cpr_nummer'].replace('-', '')
+            case _:
+                ssn = None
+
         person_full_name = None
         case_folder_id = None
 
@@ -107,7 +115,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         try:
             case_id = pf.create_case(
                 case_handler,
-                orchestrator_connection,
+                oc_args_json['os2form_webform_id'],
                 oc_args_json['case_type'],
                 oc_args_json['case_data'],
                 credentials['sql_conn_string'],
@@ -118,7 +126,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                 oc_args_json['table_name'],
                 ssn,
                 person_full_name,
-                case_folder_id,
+                case_folder_id
             )
         except Exception as e:
             print(e)
@@ -147,11 +155,5 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
 
 
 if __name__ == "__main__":
-    # oc = OrchestratorConnection.create_connection_from_args()
-    oc = OrchestratorConnection(
-        "test",
-        os.getenv('OpenOrchestratorConnString'),
-        os.getenv('OpenOrchestratorKey'),
-        ""
-    )
+    oc = OrchestratorConnection.create_connection_from_args()
     process(oc)
