@@ -8,7 +8,7 @@ from OpenOrchestrator.orchestrator_connection.connection import OrchestratorConn
 
 from mbu_dev_shared_components.utils.db_stored_procedure_executor import execute_stored_procedure
 from mbu_dev_shared_components.os2forms.documents import download_file_bytes
-from mbu_dev_shared_components.getorganized.documents import upload_file_to_case
+from mbu_dev_shared_components.getorganized.documents import mark_file_as_case_record, upload_file_to_case, finalize_file
 
 from robot_framework.case_manager.url_processing import find_urls, extract_filename_from_url
 
@@ -188,7 +188,8 @@ def create_case(
     table_name: str,
     ssn: str = None,
     person_full_name: str = None,
-    case_folder_id: str = None
+    case_folder_id: str = None,
+    received_date: str = None
 ) -> Any:
     """Create a new case."""
     try:
@@ -216,8 +217,9 @@ def create_case(
             oc_args_json['supplementary_departments'],
             oc_args_json['kle_number'],
             oc_args_json['facet'],
-            oc_args_json['start_date'],
+            received_date or oc_args_json.get('start_date'),
             oc_args_json['special_group'],
+            oc_args_json['custom_master_case'],
             True
         )
         response = case_handler.create_case(case_data, '/_goapi/Cases')
@@ -251,16 +253,18 @@ def journalize_file(
     go_api_username: str,
     go_api_password: str,
     conn_string: str,
-    update_response_data: str,
-    update_process_status: str,
     process_status_params_failed: str,
     uuid: str,
-    table_name: str
+    oc_args_json: str,
+    orchestrator_connection: OrchestratorConnection
 ):
     """Journalize associated files in the 'Document' folder under the citizen case."""
     try:
+        orchestrator_connection.log_trace("Uploading document(s) to the case.")
+
         urls = find_urls(parsed_form)
         documents = []
+        document_ids = []
 
         for url in urls:
             filename = extract_filename_from_url(url)
@@ -275,25 +279,49 @@ def journalize_file(
                 "Bytes": list(file_bytes)
             }
             endpoint = go_api_endpoint + '/_goapi/Documents/AddToCase'
+            orchestrator_connection.log_trace("Uploading document(s).")
             response = upload_file_to_case(body, endpoint, go_api_username, go_api_password)
             if response.ok:
                 document_id = response.json()["DocId"]
                 document_json_str = {"DocumentId": str(document_id)}
                 documents.append(document_json_str)
+                document_ids.append(document_id)
+                orchestrator_connection.log_trace("The document was uploaded.")
             else:
+                orchestrator_connection.log_error("An error occured when trying to upload the document to the case.")
                 raise RequestError("Request response failed.")
+
+        if oc_args_json['case_data']['journalize_documents']:
+            orchestrator_connection.log_trace("Journalizing document.")
+            endpoint_journalize_document = go_api_endpoint + '/_goapi/Documents/MarkMultipleAsCaseRecord/ByDocumentId'
+            response_journalize_document = mark_file_as_case_record(document_ids, endpoint_journalize_document, go_api_username, go_api_password)
+            orchestrator_connection.log_trace("Document was journalized.")
+            if not response_journalize_document.ok:
+                orchestrator_connection.log_error("An error occured when trying to journalizing the document.")
+                raise RequestError("Request response failed.")
+
+        if oc_args_json['case_data']['finalize_documents']:
+            orchestrator_connection.log_trace("Finalizing document.")
+            endpoint_journalize_document = go_api_endpoint + '/_goapi/Documents/FinalizeMultiple/ByDocumentId'
+            response_journalize_document = finalize_file(document_ids, endpoint_journalize_document, go_api_username, go_api_password)
+            orchestrator_connection.log_trace("Document was finalized.")
+            if not response_journalize_document.ok:
+                orchestrator_connection.log_error("An error occured when trying to journalizing the document.")
+                raise RequestError("Request response failed.")
+
+        table_name = oc_args_json['table_name']
         sql_data_params = {
             "StepName": ("str", "Case Files"),
             "JsonFragment": ("str", f'{json.dumps(documents)}'),
             "uuid": ("str", f'{uuid}'),
             "TableName": ("str", f'{table_name}')
         }
-        sql_update_result = execute_stored_procedure(conn_string, update_response_data, sql_data_params)
+        sql_update_result = execute_stored_procedure(conn_string, oc_args_json['hub_update_response_data'], sql_data_params)
         if not sql_update_result['success']:
             raise DatabaseError("SQL - Update response data failed.")
     except (DatabaseError, RequestError) as e:
-        execute_stored_procedure(conn_string, update_process_status, process_status_params_failed)
+        execute_stored_procedure(conn_string, oc_args_json['hub_update_process_status'], process_status_params_failed)
         raise e
     except Exception as e:
-        execute_stored_procedure(conn_string, update_process_status, process_status_params_failed)
+        execute_stored_procedure(conn_string, oc_args_json['hub_update_process_status'], process_status_params_failed)
         raise RuntimeError(f"An unexpected error occurred during file journalization: {e}") from e

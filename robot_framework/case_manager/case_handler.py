@@ -74,6 +74,7 @@ class CaseHandler:
         facet: str = None,
         start_date: str = None,
         special_group: str = None,
+        custom_master_case: str = None,
         return_when_case_fully_created: bool = True
     ) -> str:
         """
@@ -97,6 +98,7 @@ class CaseHandler:
                     + (f'ows_Facet=\"{facet}\" ' if facet else '')
                     + (f'ows_Modtaget=\"{start_date}\" ' if start_date else '')
                     + (f'ows_SpecialGroup=\"{special_group}\" ' if special_group else '')
+                    + (f'ows_CustomMasterCase=\"{custom_master_case}\" ' if custom_master_case else '')
                     + '/>'
                 )
 

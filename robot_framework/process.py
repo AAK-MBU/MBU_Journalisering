@@ -25,10 +25,18 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         uuid = form['uuid']
         orchestrator_connection.log_trace(f"UUID: {uuid}")
 
-        parsed_form = json.loads(form['data'])
-        ssn = extract_ssn(oc_args_json, parsed_form)
+        parsed_form_data = json.loads(form['data'])
+        received_date = parsed_form_data['entity']['completed'][0]['value']
+        ssn = extract_ssn(oc_args_json, parsed_form_data)
         person_full_name = None
         case_folder_id = None
+
+
+        # TODO: 
+        # Sæt dato på dokument når det uploades
+        # Del kvitteringerne op
+        ## Blanketten skal være angivet som “Indgående”
+        ## Digital Post kvittering skal være angivet som “Udgående” 
 
         status_params_inprogress, status_params_success, status_params_failed = get_status_params(uuid, oc_args_json)
 
@@ -112,17 +120,16 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         try:
             pf.journalize_file(
                 case_id,
-                parsed_form,
+                parsed_form_data,
                 credentials['os2_api_key'],
                 credentials['go_api_endpoint'],
                 credentials['go_api_username'],
                 credentials['go_api_password'],
                 credentials['sql_conn_string'],
-                oc_args_json['hub_update_response_data'],
-                oc_args_json['hub_update_process_status'],
                 status_params_failed,
                 uuid,
-                oc_args_json['table_name']
+                oc_args_json,
+                orchestrator_connection
             )
         except Exception:
             continue
@@ -167,23 +174,23 @@ def get_status_params(uuid, oc_args_json):
     return status_params_inprogress, status_params_success, status_params_failed
 
 
-def extract_ssn(oc_args_json, parsed_form):
+def extract_ssn(oc_args_json, parsed_form_data):
     """
     Extracts the Social Security Number (SSN) from the parsed form data based on the provided webform ID.
 
     Args:
         oc_args_json (dict): A dictionary containing various process-related arguments, including the webform ID.
-        parsed_form (dict): A dictionary containing the parsed form data, including potential SSN fields.
+        parsed_form_data (dict): A dictionary containing the parsed form data, including potential SSN fields.
 
     Returns:
         str or None: The extracted SSN as a string with hyphens removed, or None if the SSN is not present in the form data.
     """
     match oc_args_json['os2form_webform_id']:
         case "tilmelding_til_modersmaalsunderv" | "indmeldelse_i_modtagelsesklasse" | "ansoegning_om_koersel_af_skoleel" | "ansoegning_om_midlertidig_koerse":
-            if 'cpr_barnets_nummer' in parsed_form['data']:
-                return parsed_form['data']['cpr_barnets_nummer'].replace('-', '')
-            if 'barnets_cpr_nummer' in parsed_form['data']:
-                return parsed_form['data']['barnets_cpr_nummer'].replace('-', '')
+            if 'cpr_barnets_nummer' in parsed_form_data['data']:
+                return parsed_form_data['data']['cpr_barnets_nummer'].replace('-', '')
+            if 'barnets_cpr_nummer' in parsed_form_data['data']:
+                return parsed_form_data['data']['barnets_cpr_nummer'].replace('-', '')
         case _:
             return None
 
