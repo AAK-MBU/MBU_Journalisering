@@ -10,7 +10,7 @@ from mbu_dev_shared_components.utils.db_stored_procedure_executor import execute
 from mbu_dev_shared_components.os2forms.documents import download_file_bytes
 from mbu_dev_shared_components.getorganized.documents import mark_file_as_case_record, upload_file_to_case, finalize_file
 
-from robot_framework.case_manager.url_processing import find_urls, extract_filename_from_url
+from robot_framework.case_manager.url_processing import extract_filename_from_url, find_name_url_pairs
 
 
 class DatabaseError(Exception):
@@ -247,7 +247,7 @@ def create_case(
 
 def journalize_file(
     case_id: str,
-    parsed_form: Dict[str, Any],
+    parsed_form_data: Dict[str, Any],
     os2_api_key: str,
     go_api_endpoint: str,
     go_api_username: str,
@@ -262,19 +262,27 @@ def journalize_file(
     try:
         orchestrator_connection.log_trace("Uploading document(s) to the case.")
 
-        urls = find_urls(parsed_form)
+        urls = find_name_url_pairs(parsed_form_data)
         documents = []
         document_ids = []
 
-        for url in urls:
+        if oc_args_json['case_data']['documents_use_forms_date'] == "True":
+            received_date = parsed_form_data['entity']['completed'][0]['value']
+        else:
+            received_date = None
+
+        for name, url in urls.items():
             filename = extract_filename_from_url(url)
+            print(f"Name: {name}")
+            print(f"URL: {url}")
+            print(f"filename: {filename}")
             file_bytes = download_file_bytes(url, os2_api_key)
             body = {
                 "CaseId": f"{case_id}",
                 "ListName": "Dokumenter",
                 "FolderPath": "null",
                 "FileName": f"{filename}",
-                "Metadata": "<z:row xmlns:z=\"#RowsetSchema\" />",
+                "Metadata": '<z:row xmlns:z=\"#RowsetSchema\" ' + (f'ows_Dato=\"{received_date}\"' if received_date else '') + ' />',
                 "Overwrite": "true",
                 "Bytes": list(file_bytes)
             }

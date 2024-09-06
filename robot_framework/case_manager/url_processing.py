@@ -50,6 +50,36 @@ def find_urls(data: Union[Dict[str, Union[str, dict, list]], list]) -> List[str]
     return urls
 
 
+def find_name_url_pairs(data: Union[Dict[str, Union[str, dict, list]], list]) -> Dict[str, str]:
+    """
+    Recursively find all name and URL pairs in a nested dictionary or list,
+    specifically looking for 'name' and 'url' keys in 'attachments'.
+
+    Args:
+        data (Union[Dict[str, Union[str, dict, list]], list]): The data to search for name-URL pairs.
+
+    Returns:
+        Dict[str, str]: A dictionary of name-URL pairs.
+    """
+    name_url_pairs = {}
+    
+    if isinstance(data, dict):
+        for key, value in data.items():
+            if key == "attachments" and isinstance(value, dict):
+                for attachment_key, attachment_value in value.items():
+                    if isinstance(attachment_value, dict) and "name" in attachment_value and "url" in attachment_value:
+                        name_url_pairs[attachment_value["name"]] = attachment_value["url"]
+            # Recur for nested dictionaries and lists
+            elif isinstance(value, (dict, list)):
+                name_url_pairs.update(find_name_url_pairs(value))
+    
+    elif isinstance(data, list):
+        for item in data:
+            name_url_pairs.update(find_name_url_pairs(item))
+    
+    return name_url_pairs
+
+
 def extract_filename_from_url(url: str) -> str:
     """
     Extract the filename from a given URL.
