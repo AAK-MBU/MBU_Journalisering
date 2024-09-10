@@ -46,7 +46,7 @@ class CaseHandler:
         Returns:
         - str: JSON string of case folder data.
         """
-        xml_metadata = (
+        xml_case_metadata = (
                     '<z:row xmlns:z=\"#RowsetSchema\" '
                     'ows_CaseStatus=\"Åben\" '
                     f'ows_CaseCategory=\"Borgermappe\" '
@@ -54,7 +54,7 @@ class CaseHandler:
                     + '/>'
                 )
 
-        return self.case_obj.case_data_json(case_type_prefix, xml_metadata, return_when_case_fully_created)
+        return self.case_obj.case_data_json(case_type_prefix, xml_case_metadata, return_when_case_fully_created)
 
     def create_case_data(
         self,
