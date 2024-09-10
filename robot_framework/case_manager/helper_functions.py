@@ -66,7 +66,7 @@ def find_name_url_pairs(data: Union[Dict[str, Union[str, dict, list]], list]) ->
                 for attachment_key, attachment_value in value.items():
                     if isinstance(attachment_value, dict) and "name" in attachment_value and "url" in attachment_value:
                         name_url_pairs[attachment_value["name"]] = attachment_value["url"]
-            # Recur for nested dictionaries and lists
+                        print(attachment_key)
             elif isinstance(value, (dict, list)):
                 name_url_pairs.update(find_name_url_pairs(value))
 

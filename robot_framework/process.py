@@ -8,7 +8,7 @@ from mbu_dev_shared_components.getorganized.objects import CaseDataJson
 
 from robot_framework.case_manager.case_handler import CaseHandler
 from robot_framework.case_manager.document_handler import DocumentHandler
-from robot_framework.case_manager import process_functions as pf
+from robot_framework.case_manager import journalize_process as jp
 
 
 def process(orchestrator_connection: OrchestratorConnection) -> None:
@@ -16,8 +16,8 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
     orchestrator_connection.log_trace("Running process.")
     oc_args_json = json.loads(orchestrator_connection.process_arguments)
 
-    credentials = pf.get_credentials_and_constants(orchestrator_connection)
-    forms_data = pf.get_forms_data(credentials['sql_conn_string'], oc_args_json["table_name"])
+    credentials = jp.get_credentials_and_constants(orchestrator_connection)
+    forms_data = jp.get_forms_data(credentials['sql_conn_string'], oc_args_json["table_name"])
 
     for form in forms_data:
         case_handler = CaseHandler(credentials['go_api_endpoint'], credentials['go_api_username'], credentials['go_api_password'])
@@ -40,7 +40,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         if oc_args_json['case_type'] == "BOR":
             orchestrator_connection.log_trace("Lookup the citizen.")
             try:
-                person_full_name, person_go_id = pf.contact_lookup(
+                person_full_name, person_go_id = jp.contact_lookup(
                     case_handler,
                     ssn,
                     credentials['sql_conn_string'],
@@ -55,7 +55,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
 
             orchestrator_connection.log_trace("Check for existing citizen folder.")
             try:
-                case_folder_id = pf.check_case_folder(
+                case_folder_id = jp.check_case_folder(
                     case_handler,
                     case_data_handler,
                     oc_args_json['case_type'],
@@ -75,7 +75,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
             if not case_folder_id:
                 orchestrator_connection.log_trace("Create citizen folder.")
                 try:
-                    case_folder_id = pf.create_case_folder(
+                    case_folder_id = jp.create_case_folder(
                         case_handler,
                         oc_args_json['case_type'],
                         person_full_name,
@@ -93,7 +93,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
 
         orchestrator_connection.log_trace("Create case.")
         try:
-            case_id = pf.create_case(
+            case_id = jp.create_case(
                 case_handler,
                 oc_args_json['os2form_webform_id'],
                 oc_args_json['case_type'],
@@ -113,7 +113,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
 
         orchestrator_connection.log_trace("Journalize files.")
         try:
-            pf.journalize_file(
+            jp.journalize_file(
                 document_handler,
                 case_id,
                 parsed_form_data,
