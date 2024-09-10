@@ -49,7 +49,7 @@ class DocumentHandler:
         Returns:
         - str: JSON string of document data.
         """
-        xml_metadata = (
+        xml_document_metadata = (
             '<z:row xmlns:z=\"#RowsetSchema\" '
             + (f'ows_Dato=\"{document_date}\" ' if document_date else '')
             + (f'ows_Title=\"{document_title}\" ' if document_title else '')
@@ -58,7 +58,7 @@ class DocumentHandler:
             + '/>'
         )
 
-        return self.document_obj.document_data_json(case_id, list_name, folder_path, filename, xml_metadata, overwrite, data_in_bytes)
+        return self.document_obj.document_data_json(case_id, list_name, folder_path, filename, xml_document_metadata, overwrite, data_in_bytes)
 
     def upload_document(self, document_data: str, endpoint_path: str):
         """
