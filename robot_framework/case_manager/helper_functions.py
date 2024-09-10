@@ -1,8 +1,5 @@
 """
-This module provides utility functions for working with URLs within nested
-data structures. It includes functions to check if a string is a URL,
-find all URLs within nested dictionaries or lists, and extract filenames
-from URLs.
+This module provides helper functions.
 """
 import re
 from typing import Dict, List, Union
@@ -62,7 +59,7 @@ def find_name_url_pairs(data: Union[Dict[str, Union[str, dict, list]], list]) ->
         Dict[str, str]: A dictionary of name-URL pairs.
     """
     name_url_pairs = {}
-    
+
     if isinstance(data, dict):
         for key, value in data.items():
             if key == "attachments" and isinstance(value, dict):
@@ -72,11 +69,11 @@ def find_name_url_pairs(data: Union[Dict[str, Union[str, dict, list]], list]) ->
             # Recur for nested dictionaries and lists
             elif isinstance(value, (dict, list)):
                 name_url_pairs.update(find_name_url_pairs(value))
-    
+
     elif isinstance(data, list):
         for item in data:
             name_url_pairs.update(find_name_url_pairs(item))
-    
+
     return name_url_pairs
 
 
@@ -95,3 +92,74 @@ def extract_filename_from_url(url: str) -> str:
     filename = path_segments[-1]
     original_filename = unquote(filename)
     return original_filename
+
+
+def extract_key_value_pairs_from_json(json_data, node_name=None, separator=";#", target_type=str):
+    """
+    Recursively traverses a JSON object (a dictionary or list) and extracts key-value pairs
+    from values that match the specified target type (by default, strings). The key-value pairs
+    are extracted from strings using the provided separator. The node to target can be specified
+    by name, and the function will find that node anywhere in the structure.
+
+    Parameters:
+    -----------
+    json_data : dict or list
+        The input JSON-like object (nested dictionary or list) to traverse.
+    node_name : str, optional
+        The name of the node to search for. If None, the function will search the entire JSON
+        structure for values that match the target type and contain the separator.
+    separator : str, optional
+        The separator used in strings to split key-value pairs (default is ";#").
+    target_type : type, optional
+        The type of values to process for key-value pair extraction. By default, it is `str`,
+        so it extracts from strings, but you can specify other types (e.g., list, dict).
+
+    Returns:
+    --------
+    dict
+        A dictionary of extracted key-value pairs from the JSON object.
+    """
+    result = {}
+
+    def extract_pairs(value):
+        """
+        Splits a value (usually a string) using the specified separator and creates key-value pairs
+        by pairing adjacent items.
+
+        Parameters:
+        -----------
+        value : str
+            The string to be split and processed into key-value pairs.
+
+        Returns:
+        --------
+        dict
+            A dictionary with key-value pairs extracted from the string.
+        """
+        categories = value.split(separator)
+        return {categories[i].strip(): categories[i + 1].strip()
+                for i in range(0, len(categories) - 1, 2)}
+
+    def find_and_extract_from_node(data):
+        """
+        Recursively traverses the JSON structure to find nodes with the specified name and extracts
+        key-value pairs from them if they match the target type.
+
+        Parameters:
+        -----------
+        data : dict, list, or any type
+            The JSON-like structure to traverse and extract key-value pairs from.
+        """
+        if isinstance(data, dict):
+            for key, value in data.items():
+                if key == node_name and isinstance(value, target_type) and separator in str(value):
+                    result.update(extract_pairs(value))
+                elif isinstance(value, (dict, list)):
+                    find_and_extract_from_node(value)
+        elif isinstance(data, list):
+            for item in data:
+                find_and_extract_from_node(item)
+
+    find_and_extract_from_node(json_data)
+
+    return result

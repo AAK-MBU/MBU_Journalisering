@@ -7,6 +7,7 @@ from mbu_dev_shared_components.utils.db_stored_procedure_executor import execute
 from mbu_dev_shared_components.getorganized.objects import CaseDataJson
 
 from robot_framework.case_manager.case_handler import CaseHandler
+from robot_framework.case_manager.document_handler import DocumentHandler
 from robot_framework.case_manager import process_functions as pf
 
 
@@ -22,6 +23,8 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         case_handler = CaseHandler(credentials['go_api_endpoint'], credentials['go_api_username'], credentials['go_api_password'])
         case_data_handler = CaseDataJson()
 
+        document_handler = DocumentHandler(credentials['go_api_endpoint'], credentials['go_api_username'], credentials['go_api_password'])
+
         uuid = form['uuid']
         orchestrator_connection.log_trace(f"UUID: {uuid}")
 
@@ -30,15 +33,8 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         person_full_name = None
         case_folder_id = None
 
-
-        # ToDO:
-        # Sæt dato på dokument når det uploades
-        # Del kvitteringerne op
-        ## Blanketten skal være angivet som “Indgående”
-        ## Digital Post kvittering skal være angivet som “Udgående” 
-
         status_params_inprogress, status_params_success, status_params_failed = get_status_params(uuid, oc_args_json)
-        """
+
         execute_stored_procedure(credentials['sql_conn_string'], oc_args_json['hub_update_process_status'], status_params_inprogress)
 
         if oc_args_json['case_type'] == "BOR":
@@ -114,17 +110,14 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
             )
         except Exception:
             continue
-        """
-        case_id = "BOR-2024-000804-002"
+
         orchestrator_connection.log_trace("Journalize files.")
         try:
             pf.journalize_file(
+                document_handler,
                 case_id,
                 parsed_form_data,
                 credentials['os2_api_key'],
-                credentials['go_api_endpoint'],
-                credentials['go_api_username'],
-                credentials['go_api_password'],
                 credentials['sql_conn_string'],
                 status_params_failed,
                 uuid,
@@ -150,11 +143,6 @@ def get_status_params(uuid, oc_args_json):
             - status_params_inprogress: Parameters indicating that the process is in progress.
             - status_params_success: Parameters indicating that the process completed successfully.
             - status_params_failed: Parameters indicating that the process has failed.
-
-    Each dictionary contains the following keys:
-        - "Status": A string indicating the status of the process (e.g., "InProgress", "Successful", "Failed").
-        - "uuid": The UUID of the process.
-        - "TableName": The name of the table associated with the process.
     """
     status_params_inprogress = {
         "Status": ("str", "InProgress"),
@@ -196,7 +184,5 @@ def extract_ssn(oc_args_json, parsed_form_data):
 
 
 if __name__ == "__main__":
-    # oc = OrchestratorConnection.create_connection_from_args()
-    import os
-    oc = OrchestratorConnection("", os.getenv('OpenOrchestratorConnString'), os.getenv('OpenOrchestratorKey'), '{"os2form_webform_id":"indmeldelse_i_modtagelsesklasse","table_name":"Hub_GO_test","case_type":"BOR","hub_update_response_data":"rpa.Hub_AddOrUpdateJson","hub_update_process_status":"rpa.Hub_UpdateProcessStatus","case_data":{"case_category":"Standard","case_folder_id":"","case_owner_id":"2471","case_owner_name":"Rune Kristian Ustrup (az49337)","case_profile_id":"89","case_profile_name":"MBU PUF Elevsager kompetencecenter DSA","case_title":"","department_id":"159","department_name":"Læssøesgades skole - UV - Kompetencecenter for DSA","facet":"","kle_number":"","return_when_case_fully_created":"True","special_group":"","start_date":"","supplementary_case_owners":"5301;#Karina Skaarup (az12374)","supplementary_departments":"133;#Fritid, Uddannelse og Forebyggelse","journalize_documents":"True","finalize_documents":"True","documents_use_forms_date":"False"}}')
+    oc = OrchestratorConnection.create_connection_from_args()
     process(oc)
