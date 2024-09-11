@@ -17,7 +17,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
     oc_args_json = json.loads(orchestrator_connection.process_arguments)
 
     credentials = jp.get_credentials_and_constants(orchestrator_connection)
-    forms_data = jp.get_forms_data(credentials['sql_conn_string'], oc_args_json["table_name"])
+    forms_data = jp.get_forms_data(credentials['sql_conn_string'], oc_args_json["tableName"])
 
     for form in forms_data:
         case_handler = CaseHandler(credentials['go_api_endpoint'], credentials['go_api_username'], credentials['go_api_password'])
@@ -35,20 +35,20 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
 
         status_params_inprogress, status_params_success, status_params_failed = get_status_params(uuid, oc_args_json)
 
-        execute_stored_procedure(credentials['sql_conn_string'], oc_args_json['hub_update_process_status'], status_params_inprogress)
+        execute_stored_procedure(credentials['sql_conn_string'], oc_args_json['hubUpdateProcessStatus'], status_params_inprogress)
 
-        if oc_args_json['case_type'] == "BOR":
+        if oc_args_json['caseType'] == "BOR":
             orchestrator_connection.log_trace("Lookup the citizen.")
             try:
                 person_full_name, person_go_id = jp.contact_lookup(
                     case_handler,
                     ssn,
                     credentials['sql_conn_string'],
-                    oc_args_json['hub_update_response_data'],
-                    oc_args_json['hub_update_process_status'],
+                    oc_args_json['hubUpdateResponseData'],
+                    oc_args_json['hubUpdateProcessStatus'],
                     status_params_failed,
                     uuid,
-                    oc_args_json['table_name']
+                    oc_args_json['tableName']
                 )
             except Exception:
                 continue
@@ -58,16 +58,16 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                 case_folder_id = jp.check_case_folder(
                     case_handler,
                     case_data_handler,
-                    oc_args_json['case_type'],
+                    oc_args_json['caseType'],
                     person_full_name,
                     person_go_id,
                     ssn,
                     credentials['sql_conn_string'],
-                    oc_args_json['hub_update_response_data'],
-                    oc_args_json['hub_update_process_status'],
+                    oc_args_json['hubUpdateResponseData'],
+                    oc_args_json['hubUpdateProcessStatus'],
                     status_params_failed,
                     uuid,
-                    oc_args_json['table_name']
+                    oc_args_json['tableName']
                 )
             except Exception:
                 continue
@@ -77,16 +77,16 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                 try:
                     case_folder_id = jp.create_case_folder(
                         case_handler,
-                        oc_args_json['case_type'],
+                        oc_args_json['caseType'],
                         person_full_name,
                         person_go_id,
                         ssn,
                         credentials['sql_conn_string'],
-                        oc_args_json['hub_update_response_data'],
-                        oc_args_json['hub_update_process_status'],
+                        oc_args_json['hubUpdateResponseData'],
+                        oc_args_json['hubUpdateProcessStatus'],
                         status_params_failed,
                         uuid,
-                        oc_args_json['table_name']
+                        oc_args_json['tableName']
                     )
                 except Exception:
                     continue
@@ -95,15 +95,15 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         try:
             case_id = jp.create_case(
                 case_handler,
-                oc_args_json['os2form_webform_id'],
-                oc_args_json['case_type'],
-                oc_args_json['case_data'],
+                oc_args_json['os2formWebformId'],
+                oc_args_json['caseType'],
+                oc_args_json['caseData'],
                 credentials['sql_conn_string'],
-                oc_args_json['hub_update_response_data'],
-                oc_args_json['hub_update_process_status'],
+                oc_args_json['hubUpdateResponseData'],
+                oc_args_json['hubUpdateProcessStatus'],
                 status_params_failed,
                 uuid,
-                oc_args_json['table_name'],
+                oc_args_json['tableName'],
                 ssn,
                 person_full_name,
                 case_folder_id
@@ -127,7 +127,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         except Exception:
             continue
 
-        execute_stored_procedure(credentials['sql_conn_string'], oc_args_json['hub_update_process_status'], status_params_success)
+        execute_stored_procedure(credentials['sql_conn_string'], oc_args_json['hubUpdateProcessStatus'], status_params_success)
 
 
 def get_status_params(uuid, oc_args_json):
@@ -147,17 +147,17 @@ def get_status_params(uuid, oc_args_json):
     status_params_inprogress = {
         "Status": ("str", "InProgress"),
         "uuid": ("str", f'{uuid}'),
-        "TableName": ("str", f'{oc_args_json["table_name"]}')
+        "TableName": ("str", f'{oc_args_json["tableName"]}')
     }
     status_params_success = {
         "Status": ("str", "Successful"),
         "uuid": ("str", f'{uuid}'),
-        "TableName": ("str", f'{oc_args_json["table_name"]}')
+        "TableName": ("str", f'{oc_args_json["tableName"]}')
     }
     status_params_failed = {
         "Status": ("str", "Failed"),
         "uuid": ("str", f'{uuid}'),
-        "TableName": ("str", f'{oc_args_json["table_name"]}')
+        "TableName": ("str", f'{oc_args_json["tableName"]}')
     }
     return status_params_inprogress, status_params_success, status_params_failed
 
@@ -173,7 +173,7 @@ def extract_ssn(oc_args_json, parsed_form_data):
     Returns:
         str or None: The extracted SSN as a string with hyphens removed, or None if the SSN is not present in the form data.
     """
-    match oc_args_json['os2form_webform_id']:
+    match oc_args_json['os2formWebformId']:
         case "tilmelding_til_modersmaalsunderv" | "indmeldelse_i_modtagelsesklasse" | "ansoegning_om_koersel_af_skoleel" | "ansoegning_om_midlertidig_koerse":
             if 'cpr_barnets_nummer' in parsed_form_data['data']:
                 return parsed_form_data['data']['cpr_barnets_nummer'].replace('-', '')

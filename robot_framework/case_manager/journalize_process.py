@@ -251,22 +251,22 @@ def create_case_data(case_handler, case_type: str, oc_args_json: Dict[str, Any],
     """Create the data needed to create a new case."""
     return case_handler.create_case_data(
         case_type,
-        oc_args_json['case_category'],
-        oc_args_json['case_owner_id'],
-        oc_args_json['case_owner_name'],
-        oc_args_json['case_profile_id'],
-        oc_args_json['case_profile_name'],
+        oc_args_json['caseCategory'],
+        oc_args_json['caseOwnerId'],
+        oc_args_json['caseOwnerName'],
+        oc_args_json['caseProfileId'],
+        oc_args_json['caseProfileName'],
         case_title,
         case_folder_id,
-        oc_args_json['supplementary_case_owners'],
-        oc_args_json['department_id'],
-        oc_args_json['department_name'],
-        oc_args_json['supplementary_departments'],
-        oc_args_json['kle_number'],
+        oc_args_json['supplementaryCaseOwners'],
+        oc_args_json['departmentId'],
+        oc_args_json['departmentName'],
+        oc_args_json['supplementaryDepartments'],
+        oc_args_json['kleNumber'],
         oc_args_json['facet'],
-        received_date or oc_args_json.get('start_date'),
-        oc_args_json['special_group'],
-        oc_args_json['custom_master_case'],
+        received_date or oc_args_json.get('startDate'),
+        oc_args_json['specialGroup'],
+        oc_args_json['customMasterCase'],
         True
     )
 
@@ -353,12 +353,12 @@ def journalize_file(
         documents = []
         document_ids = []
 
-        if oc_args_json['document_data']['use_completed_date_from_form_as_date'] == "True":
+        if oc_args_json['documentData']['useCompletedDateFromFormAsDate'] == "True":
             received_date = parsed_form_data['entity']['completed'][0]['value']
         else:
             received_date = ""
 
-        document_category_json = extract_key_value_pairs_from_json(oc_args_json['document_data'], node_name="document_category")
+        document_category_json = extract_key_value_pairs_from_json(oc_args_json['documentData'], node_name="documentCategory")
 
         for name, url in urls.items():
             filename = extract_filename_from_url(url)
@@ -388,32 +388,32 @@ def journalize_file(
             document_ids.append(document_id)
             orchestrator_connection.log_trace("The document was uploaded.")
 
-        if oc_args_json['document_data']['journalize_documents'] == "True":
+        if oc_args_json['documentData']['journalizeDocuments'] == "True":
             orchestrator_connection.log_trace("Journalizing document.")
             response_journalize_document = document_handler.journalize_document(document_ids, '/_goapi/Documents/MarkMultipleAsCaseRecord/ByDocumentId')
             if not response_journalize_document.ok:
                 log_and_raise_error(orchestrator_connection, "An error occurred while journalizing the document.", RequestError("Request response failed."))
             orchestrator_connection.log_trace("Document was journalized.")
 
-        if oc_args_json['document_data']['finalize_documents'] == "True":
+        if oc_args_json['documentData']['finalizeDocuments'] == "True":
             orchestrator_connection.log_trace("Finalizing document.")
             response_journalize_document = document_handler.finalize_document(document_ids, '/_goapi/Documents/FinalizeMultiple/ByDocumentId')
             if not response_journalize_document.ok:
                 log_and_raise_error(orchestrator_connection, "An error occurred while finalizing the document.", RequestError("Request response failed."))
             orchestrator_connection.log_trace("Document was finalized.")
 
-        table_name = oc_args_json['table_name']
+        table_name = oc_args_json['tableName']
         sql_data_params = {
             "StepName": ("str", "Case Files"),
             "JsonFragment": ("str", json.dumps(documents)),
             "uuid": ("str", uuid),
             "TableName": ("str", table_name)
         }
-        execute_sql_update(conn_string, oc_args_json['hub_update_response_data'], sql_data_params)
+        execute_sql_update(conn_string, oc_args_json['hubUpdateResponseData'], sql_data_params)
 
     except (DatabaseError, RequestError) as e:
-        handle_database_error(conn_string, oc_args_json['hub_update_process_status'], process_status_params_failed, e)
+        handle_database_error(conn_string, oc_args_json['hubUpdateProcessStatus'], process_status_params_failed, e)
 
     except Exception as e:
-        handle_database_error(conn_string, oc_args_json['hub_update_process_status'], process_status_params_failed, RuntimeError(
+        handle_database_error(conn_string, oc_args_json['hubUpdateProcessStatus'], process_status_params_failed, RuntimeError(
             f"An unexpected error occurred during file journalization: {e}"))
