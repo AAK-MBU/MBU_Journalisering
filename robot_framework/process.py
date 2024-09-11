@@ -179,6 +179,8 @@ def extract_ssn(oc_args_json, parsed_form_data):
                 return parsed_form_data['data']['cpr_barnets_nummer'].replace('-', '')
             if 'barnets_cpr_nummer' in parsed_form_data['data']:
                 return parsed_form_data['data']['barnets_cpr_nummer'].replace('-', '')
+            if 'cpr_elevens_nummer' in parsed_form_data['data']:
+                return parsed_form_data['data']['cpr_elevens_nummer'].replace('-', '')
         case _:
             return None
 
