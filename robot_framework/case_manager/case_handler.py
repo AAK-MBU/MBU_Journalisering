@@ -46,7 +46,7 @@ class CaseHandler:
         Returns:
         - str: JSON string of case folder data.
         """
-        xml_metadata = (
+        xml_case_metadata = (
                     '<z:row xmlns:z=\"#RowsetSchema\" '
                     'ows_CaseStatus=\"Åben\" '
                     f'ows_CaseCategory=\"Borgermappe\" '
@@ -54,7 +54,7 @@ class CaseHandler:
                     + '/>'
                 )
 
-        return self.case_obj.case_data_json(case_type_prefix, xml_metadata, return_when_case_fully_created)
+        return self.case_obj.case_data_json(case_type_prefix, xml_case_metadata, return_when_case_fully_created)
 
     def create_case_data(
         self,
@@ -74,6 +74,7 @@ class CaseHandler:
         facet: str = None,
         start_date: str = None,
         special_group: str = None,
+        custom_master_case: str = None,
         return_when_case_fully_created: bool = True
     ) -> str:
         """
@@ -97,6 +98,7 @@ class CaseHandler:
                     + (f'ows_Facet=\"{facet}\" ' if facet else '')
                     + (f'ows_Modtaget=\"{start_date}\" ' if start_date else '')
                     + (f'ows_SpecialGroup=\"{special_group}\" ' if special_group else '')
+                    + (f'ows_CustomMasterCase=\"{custom_master_case}\" ' if custom_master_case else '')
                     + '/>'
                 )
 
