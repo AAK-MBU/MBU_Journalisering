@@ -364,7 +364,10 @@ def journalize_file(
             filename = extract_filename_from_url(url)
             file_bytes = download_file_bytes(url, os2_api_key)
 
-            document_category = document_category_json.get(name, "")
+            document_category = ""
+            for key, value in document_category_json.items():
+                if value == name:
+                    document_category = key
 
             document_data = document_handler.create_document_metadata(
                 case_id=case_id,
@@ -388,6 +391,15 @@ def journalize_file(
             document_ids.append(document_id)
             orchestrator_connection.log_trace("The document was uploaded.")
 
+        table_name = oc_args_json['tableName']
+        sql_data_params = {
+            "StepName": ("str", "Case Files"),
+            "JsonFragment": ("str", json.dumps(documents)),
+            "uuid": ("str", uuid),
+            "TableName": ("str", table_name)
+        }
+        execute_sql_update(conn_string, oc_args_json['hubUpdateResponseData'], sql_data_params)
+
         if oc_args_json['documentData']['journalizeDocuments'] == "True":
             orchestrator_connection.log_trace("Journalizing document.")
             response_journalize_document = document_handler.journalize_document(document_ids, '/_goapi/Documents/MarkMultipleAsCaseRecord/ByDocumentId')
@@ -401,15 +413,6 @@ def journalize_file(
             if not response_journalize_document.ok:
                 log_and_raise_error(orchestrator_connection, "An error occurred while finalizing the document.", RequestError("Request response failed."))
             orchestrator_connection.log_trace("Document was finalized.")
-
-        table_name = oc_args_json['tableName']
-        sql_data_params = {
-            "StepName": ("str", "Case Files"),
-            "JsonFragment": ("str", json.dumps(documents)),
-            "uuid": ("str", uuid),
-            "TableName": ("str", table_name)
-        }
-        execute_sql_update(conn_string, oc_args_json['hubUpdateResponseData'], sql_data_params)
 
     except (DatabaseError, RequestError) as e:
         handle_database_error(conn_string, oc_args_json['hubUpdateProcessStatus'], process_status_params_failed, e)
