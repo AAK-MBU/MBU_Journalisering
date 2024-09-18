@@ -262,11 +262,11 @@ def create_case_data(case_handler, case_type: str, oc_args_json: Dict[str, Any],
         oc_args_json['departmentId'],
         oc_args_json['departmentName'],
         oc_args_json['supplementaryDepartments'],
-        oc_args_json['kleNumber'],
-        oc_args_json['facet'],
+        oc_args_json['kleNumber'] if 'kleNumber' in oc_args_json else None,
+        oc_args_json['facet'] if 'facet' in oc_args_json else None,
         received_date or oc_args_json.get('startDate'),
-        oc_args_json['specialGroup'],
-        oc_args_json['customMasterCase'],
+        oc_args_json['specialGroup'] if 'specialGroup' in oc_args_json else None,
+        oc_args_json['customMasterCase'] if 'customMasterCase' in oc_args_json else None,
         True
     )
 
