@@ -456,18 +456,16 @@ def journalize_file(
             orchestrator_connection.log_trace("The document was uploaded.")
             print(f"Document uploaded with ID: {document_id}")
 
-
-        if case_metadata['documentData']['journalizeDocuments'] == "True":
-
-        table_name = oc_args_json['tableName']
+        table_name = case_metadata['tableName']
         sql_data_params = {
             "StepName": ("str", "Case Files"),
             "JsonFragment": ("str", json.dumps(documents)),
             "uuid": ("str", uuid),
             "TableName": ("str", table_name)
         }
-        execute_sql_update(conn_string, oc_args_json['hubUpdateResponseData'], sql_data_params)
+        execute_sql_update(conn_string, case_metadata['hubUpdateResponseData'], sql_data_params)
 
+        if case_metadata['documentData']['journalizeDocuments'] == "True":
             orchestrator_connection.log_trace("Journalizing document.")
             response_journalize_document = document_handler.journalize_document(document_ids, '/_goapi/Documents/MarkMultipleAsCaseRecord/ByDocumentId')
             if not response_journalize_document.ok:
@@ -482,16 +480,6 @@ def journalize_file(
                 log_and_raise_error(orchestrator_connection, "An error occurred while finalizing the document.", RequestError("Request response failed."))
             orchestrator_connection.log_trace("Document was finalized.")
             print("Document was finalized.")
-
-
-        table_name = case_metadata['tableName']
-        sql_data_params = {
-            "StepName": ("str", "Case Files"),
-            "JsonFragment": ("str", json.dumps(documents)),
-            "uuid": ("str", uuid),
-            "TableName": ("str", table_name)
-        }
-        execute_sql_update(conn_string, case_metadata['hubUpdateResponseData'], sql_data_params)
 
     except (DatabaseError, RequestError) as e:
         print(f"An error occurred: {e}")
