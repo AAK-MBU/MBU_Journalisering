@@ -69,12 +69,7 @@ class DocumentHandler:
         """
         endpoint = self._get_full_endpoint(endpoint_path)
 
-        try:
-            test = documents.upload_file_to_case(document_data, endpoint, self.api_username, self.api_password)
-        except Exception as e:
-            print(e)
-
-        return test
+        return documents.upload_file_to_case(document_data, endpoint, self.api_username, self.api_password)
 
     def journalize_document(self, document_ids: list, endpoint_path: str):
         """
