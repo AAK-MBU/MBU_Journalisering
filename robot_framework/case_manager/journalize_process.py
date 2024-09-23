@@ -285,10 +285,10 @@ def determine_case_title(os2form_webform_id: str, person_full_name: str, ssn: st
                 department = parsed_form_data['data']['skole']
             elif omraade == "Dagtilbud":
                 department = parsed_form_data['data']['dagtilbud']
-            elif omraade == "Ungdomsskole":
-                department = parsed_form_data['data']['ungdomsskole']
-            elif omraade == "Klub":
-                department = parsed_form_data['data']['klub']
+            elif omraade in {"Ungdomsskole", "Klub"}:
+                department = parsed_form_data['data'].get(omraade.lower(), "Ukendt afdeling")
+            else:
+                department = "Ukendt afdeling"
             return f"{department} - Respekt for grænser"
 
 
@@ -324,16 +324,17 @@ def determine_case_profile(os2form_webform_id, case_data, parsed_form_data, orch
         return case_data['caseProfileId'], case_data['caseProfileName']
 
     # Determine the case profile based on the webform ID
-        # Respekt for grænser
     match os2form_webform_id:
         case "indmeld_kraenkelser_af_boern" | "respekt_for_graenser_privat" | "respekt_for_graenser":
             omraade = parsed_form_data['data']['omraade']
             if omraade == "Skole":
                 case_profile_name = "MBU PPR Respekt for grænser Skole"
-            if omraade == "Dagtilbud":
+            elif omraade == "Dagtilbud":
                 case_profile_name = "MBU PPR Respekt for grænser Dagtilbud"
-            if omraade == "Ungdomsskole" or omraade == "Klub":
+            elif omraade in {"Ungdomsskole", "Klub"}:  # Merge comparisons using 'in'
                 case_profile_name = "MBU PPR Respekt for grænser UngiAarhus"
+            else:
+                case_profile_name = "MBU PPR Respekt for grænser Skole"  # Default case profile name if none match
 
     case_profile_id = determine_case_profile_id(case_profile_name, orchestrator_connection)
 
