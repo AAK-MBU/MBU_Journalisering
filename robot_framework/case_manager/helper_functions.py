@@ -4,6 +4,8 @@ This module provides helper functions.
 import re
 from typing import Dict, List, Union
 from urllib.parse import urlparse, unquote
+import json
+import pyodbc
 
 
 def _is_url(string: str) -> bool:
@@ -163,3 +165,54 @@ def extract_key_value_pairs_from_json(json_data, node_name=None, separator=";#",
     find_and_extract_from_node(json_data)
 
     return result
+
+
+def fetch_case_metadata(connection_string, os2formwebform_id):
+    """Retrieve metadata for a specific os2formWebformId."""
+    try:
+        with pyodbc.connect(connection_string) as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                """
+                SELECT os2formWebformId, tableName, caseType, hubUpdateResponseData,
+                hubUpdateProcessStatus, caseData, documentData
+                FROM [RPA].[rpa].Journalisering_Metadata
+                WHERE os2formWebformId = ?;""",
+                (os2formwebform_id,)
+            )
+            row = cursor.fetchone()
+            if row is not None:
+
+                try:
+                    case_data_parsed = json.loads(row.caseData) if row.caseData else None
+                    document_data_parsed = json.loads(row.documentData) if row.documentData else None
+
+                    # Clean up the case data by removing non-breaking spaces
+                    case_data_parsed = {key: value.replace('\xa0', '') if isinstance(value, str) else value for key, value in case_data_parsed.items()}
+
+                except json.JSONDecodeError as e:
+                    print(f"Error parsing JSON data: {e}")
+                    case_data_parsed = None
+                    document_data_parsed = None
+
+                # Dictionary to store the row data
+                case_metadata = {
+                    'os2formWebformId': row.os2formWebformId,
+                    'tableName': row.tableName,
+                    'caseType': row.caseType,
+                    'hubUpdateResponseData': row.hubUpdateResponseData,
+                    'hubUpdateProcessStatus': row.hubUpdateProcessStatus,
+                    'caseData': case_data_parsed,
+                    'documentData': document_data_parsed
+                }
+                return case_metadata
+
+            print("No data found for the given os2formWebformId.")
+            return None
+
+    except pyodbc.Error as e:
+        print(f"Database error: {e}")
+        return None
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None

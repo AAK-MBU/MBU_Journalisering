@@ -2,7 +2,6 @@
 This module handles the journalization process for case management.
 It contains functionality to upload and journalize documents, and manage case data.
 """
-import os
 import json
 from typing import Dict, Any, Optional, List, Tuple
 import pyodbc
@@ -91,7 +90,7 @@ def get_credentials_and_constants(orchestrator_connection: OrchestratorConnectio
     """Retrieve necessary credentials and constants from the orchestrator connection."""
     try:
         credentials = {
-            "go_api_endpoint": os.getenv('GoApiBaseUrl'),
+            "go_api_endpoint": orchestrator_connection.get_constant('go_api_endpoint').value,
             "go_api_username": orchestrator_connection.get_credential('go_api').username,
             "go_api_password": orchestrator_connection.get_credential('go_api').password,
             "os2_api_key": orchestrator_connection.get_credential('os2_api').password,
@@ -247,31 +246,31 @@ def create_case_folder(
         return None
 
 
-def create_case_data(case_handler, case_type: str, oc_args_json: Dict[str, Any], case_title: str, case_folder_id: str, received_date: str) -> Dict[str, Any]:
+def create_case_data(case_handler, case_type: str, case_data: Dict[str, Any], case_title: str, case_folder_id: str, received_date: str, case_profile_id, case_profile_name) -> Dict[str, Any]:
     """Create the data needed to create a new case."""
     return case_handler.create_case_data(
         case_type,
-        oc_args_json['caseCategory'],
-        oc_args_json['caseOwnerId'],
-        oc_args_json['caseOwnerName'],
-        oc_args_json['caseProfileId'],
-        oc_args_json['caseProfileName'],
+        case_data['caseCategory'],
+        case_data['caseOwnerId'],
+        case_data['caseOwnerName'],
+        case_profile_id,
+        case_profile_name,
         case_title,
         case_folder_id,
-        oc_args_json['supplementaryCaseOwners'],
-        oc_args_json['departmentId'],
-        oc_args_json['departmentName'],
-        oc_args_json['supplementaryDepartments'],
-        oc_args_json['kleNumber'],
-        oc_args_json['facet'],
-        received_date or oc_args_json.get('startDate'),
-        oc_args_json['specialGroup'],
-        oc_args_json['customMasterCase'],
+        case_data['supplementaryCaseOwners'],
+        case_data['departmentId'],
+        case_data['departmentName'],
+        case_data['supplementaryDepartments'],
+        case_data['kleNumber'],
+        case_data['facet'],
+        received_date or case_data.get('startDate'),
+        case_data['specialGroup'],
+        case_data['customMasterCase'],
         True
     )
 
 
-def determine_case_title(os2form_webform_id: str, person_full_name: str, ssn: str) -> str:
+def determine_case_title(os2form_webform_id: str, person_full_name: str, ssn: str, parsed_form_data) -> str:
     """Determine the title of the case based on the webform ID."""
     match os2form_webform_id:
         case "tilmelding_til_modersmaalsunderv":
@@ -280,13 +279,74 @@ def determine_case_title(os2form_webform_id: str, person_full_name: str, ssn: st
             return f"Visitering af {person_full_name} {ssn}"
         case "ansoegning_om_koersel_af_skoleel" | "ansoegning_om_midlertidig_koerse":
             return f"Kørsel til {person_full_name}"
+        case "indmeld_kraenkelser_af_boern" | "respekt_for_graenser_privat" | "respekt_for_graenser":
+            omraade = parsed_form_data['data']['omraade']
+            if omraade == "Skole":
+                department = parsed_form_data['data']['skole']
+            elif omraade == "Dagtilbud":
+                department = parsed_form_data['data']['dagtilbud']
+            elif omraade == "Ungdomsskole":
+                department = parsed_form_data['data']['ungdomsskole']
+            elif omraade == "Klub":
+                department = parsed_form_data['data']['klub']
+            return f"{department} - Respekt for grænser"
+
+
+def determine_case_profile_id(case_profile_name: str, orchestrator_connection) -> str:
+    """Determine the case profile ID based on the case profile name."""
+    try:
+        credentials = get_credentials_and_constants(orchestrator_connection)
+        conn_string = credentials['sql_conn_string']
+
+        with pyodbc.connect(conn_string) as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT case_profile_id FROM [RPA].[rpa].GO_CaseProfiles_View WHERE name like ?", case_profile_name)
+            row = cursor.fetchone()
+            if row:
+                return row[0]
+
+        return None
+
+    except pyodbc.Error as e:
+        print(f"Database error: {e}")
+        return None
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return None
+
+
+def determine_case_profile(os2form_webform_id, case_data, parsed_form_data, orchestrator_connection) -> Tuple[str, str]:
+    """Determine the case profile ID and name."""
+
+    # If the case profile ID and name are provided in the JSON arguments, use them
+    if case_data['caseProfileId'] != "" and case_data['caseProfileName'] != "":
+        return case_data['caseProfileId'], case_data['caseProfileName']
+
+    # Determine the case profile based on the webform ID
+        # Respekt for grænser
+    match os2form_webform_id:
+        case "indmeld_kraenkelser_af_boern" | "respekt_for_graenser_privat" | "respekt_for_graenser":
+            omraade = parsed_form_data['data']['omraade']
+            if omraade == "Skole":
+                case_profile_name = "MBU PPR Respekt for grænser Skole"
+            if omraade == "Dagtilbud":
+                case_profile_name = "MBU PPR Respekt for grænser Dagtilbud"
+            if omraade == "Ungdomsskole" or omraade == "Klub":
+                case_profile_name = "MBU PPR Respekt for grænser UngiAarhus"
+
+    case_profile_id = determine_case_profile_id(case_profile_name, orchestrator_connection)
+
+    return case_profile_id, case_profile_name
 
 
 def create_case(
     case_handler,
+    orchestrator_connection,
+    parsed_form_data: Dict[str, Any],
     os2form_webform_id: str,
     case_type: str,
-    oc_args_json: str,
+    case_data: str,
     conn_string: str,
     update_response_data: str,
     update_process_status: str,
@@ -305,11 +365,13 @@ def create_case(
         Optional[str]: The case ID if created successfully, otherwise None in case of an error.
     """
     try:
-        case_title = determine_case_title(os2form_webform_id, person_full_name, ssn)
-        case_data = create_case_data(case_handler, case_type, oc_args_json, case_title, case_folder_id, received_date)
-
-        response = case_handler.create_case(case_data, '/_goapi/Cases')
+        case_title = determine_case_title(os2form_webform_id, person_full_name, ssn, parsed_form_data)
+        case_data['caseProfileId'], case_data['caseProfileName'] = determine_case_profile(os2form_webform_id, case_data, parsed_form_data, orchestrator_connection)
+        created_case_data = create_case_data(case_handler, case_type, case_data, case_title, case_folder_id, received_date, case_data['caseProfileId'], case_data['caseProfileName'])
+        print(f"Created case data: {created_case_data}")
+        response = case_handler.create_case(created_case_data, '/_goapi/Cases')
         if not response.ok:
+            print(f"Error creating case: {response.status_code} - {response.text}")
             raise RequestError("Request response failed.")
 
         case_id = response.json()['CaseID']
@@ -321,16 +383,18 @@ def create_case(
             "TableName": ("str", table_name)
         }
         execute_sql_update(conn_string, update_response_data, sql_data_params)
-
+        print(f"Case created with ID: {case_id}")
         return case_id
 
     except (DatabaseError, RequestError) as e:
         handle_database_error(conn_string, update_process_status, process_status_params_failed, e)
+        print(f"An error occurred: {e}")
         return None
 
     except Exception as e:
         handle_database_error(conn_string, update_process_status, process_status_params_failed, RuntimeError(
             f"An unexpected error occurred during case creation: {e}"))
+        print(f"An error occurred: {e}")
         return None
 
 
@@ -342,7 +406,7 @@ def journalize_file(
     conn_string: str,
     process_status_params_failed: str,
     uuid: str,
-    oc_args_json: str,
+    case_metadata: str,
     orchestrator_connection: OrchestratorConnection
 ) -> None:
     """Journalize associated files in the 'Document' folder under the citizen case."""
@@ -353,12 +417,12 @@ def journalize_file(
         documents = []
         document_ids = []
 
-        if oc_args_json['documentData']['useCompletedDateFromFormAsDate'] == "True":
+        if case_metadata['documentData']['useCompletedDateFromFormAsDate'] == "True":
             received_date = parsed_form_data['entity']['completed'][0]['value']
         else:
             received_date = ""
 
-        document_category_json = extract_key_value_pairs_from_json(oc_args_json['documentData'], node_name="documentCategory")
+        document_category_json = extract_key_value_pairs_from_json(case_metadata['documentData'], node_name="documentCategory")
 
         for name, url in urls.items():
             filename = extract_filename_from_url(url)
@@ -387,33 +451,38 @@ def journalize_file(
             documents.append({"DocumentId": str(document_id)})
             document_ids.append(document_id)
             orchestrator_connection.log_trace("The document was uploaded.")
+            print(f"Document uploaded with ID: {document_id}")
 
-        if oc_args_json['documentData']['journalizeDocuments'] == "True":
+        if case_metadata['documentData']['journalizeDocuments'] == "True":
             orchestrator_connection.log_trace("Journalizing document.")
             response_journalize_document = document_handler.journalize_document(document_ids, '/_goapi/Documents/MarkMultipleAsCaseRecord/ByDocumentId')
             if not response_journalize_document.ok:
                 log_and_raise_error(orchestrator_connection, "An error occurred while journalizing the document.", RequestError("Request response failed."))
             orchestrator_connection.log_trace("Document was journalized.")
+            print("Document was journalized.")
 
-        if oc_args_json['documentData']['finalizeDocuments'] == "True":
+        if case_metadata['documentData']['finalizeDocuments'] == "True":
             orchestrator_connection.log_trace("Finalizing document.")
             response_journalize_document = document_handler.finalize_document(document_ids, '/_goapi/Documents/FinalizeMultiple/ByDocumentId')
             if not response_journalize_document.ok:
                 log_and_raise_error(orchestrator_connection, "An error occurred while finalizing the document.", RequestError("Request response failed."))
             orchestrator_connection.log_trace("Document was finalized.")
+            print("Document was finalized.")
 
-        table_name = oc_args_json['tableName']
+        table_name = case_metadata['tableName']
         sql_data_params = {
             "StepName": ("str", "Case Files"),
             "JsonFragment": ("str", json.dumps(documents)),
             "uuid": ("str", uuid),
             "TableName": ("str", table_name)
         }
-        execute_sql_update(conn_string, oc_args_json['hubUpdateResponseData'], sql_data_params)
+        execute_sql_update(conn_string, case_metadata['hubUpdateResponseData'], sql_data_params)
 
     except (DatabaseError, RequestError) as e:
-        handle_database_error(conn_string, oc_args_json['hubUpdateProcessStatus'], process_status_params_failed, e)
+        print(f"An error occurred: {e}")
+        handle_database_error(conn_string, case_metadata['hubUpdateProcessStatus'], process_status_params_failed, e)
 
     except Exception as e:
-        handle_database_error(conn_string, oc_args_json['hubUpdateProcessStatus'], process_status_params_failed, RuntimeError(
+        print(f"An unexpected error occurred during file journalization: {e}")
+        handle_database_error(conn_string, case_metadata['hubUpdateProcessStatus'], process_status_params_failed, RuntimeError(
             f"An unexpected error occurred during file journalization: {e}"))

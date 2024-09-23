@@ -9,48 +9,47 @@ from mbu_dev_shared_components.getorganized.objects import CaseDataJson
 from robot_framework.case_manager.case_handler import CaseHandler
 from robot_framework.case_manager.document_handler import DocumentHandler
 from robot_framework.case_manager import journalize_process as jp
+from robot_framework.case_manager.helper_functions import fetch_case_metadata
 
 
 def process(orchestrator_connection: OrchestratorConnection) -> None:
     """Do the primary process of the robot."""
     orchestrator_connection.log_trace("Running process.")
     oc_args_json = json.loads(orchestrator_connection.process_arguments)
-
+    os2formwebform_id = oc_args_json['os2formWebformId']
     credentials = jp.get_credentials_and_constants(orchestrator_connection)
-    forms_data = jp.get_forms_data(credentials['sql_conn_string'], oc_args_json["tableName"])
+    case_metadata = fetch_case_metadata(credentials['sql_conn_string'], os2formwebform_id)
+    forms_data = jp.get_forms_data(credentials['sql_conn_string'], case_metadata['tableName'])
 
     for form in forms_data:
         case_handler = CaseHandler(credentials['go_api_endpoint'], credentials['go_api_username'], credentials['go_api_password'])
         case_data_handler = CaseDataJson()
-
         document_handler = DocumentHandler(credentials['go_api_endpoint'], credentials['go_api_username'], credentials['go_api_password'])
-
         uuid = form['uuid']
         orchestrator_connection.log_trace(f"UUID: {uuid}")
-
         parsed_form_data = json.loads(form['data'])
-        ssn = extract_ssn(oc_args_json, parsed_form_data)
+        ssn = extract_ssn(case_metadata, parsed_form_data)
         person_full_name = None
         case_folder_id = None
 
-        status_params_inprogress, status_params_success, status_params_failed = get_status_params(uuid, oc_args_json)
+        status_params_inprogress, status_params_success, status_params_failed = get_status_params(uuid, case_metadata)
+        execute_stored_procedure(credentials['sql_conn_string'], case_metadata['hubUpdateProcessStatus'], status_params_inprogress)
 
-        execute_stored_procedure(credentials['sql_conn_string'], oc_args_json['hubUpdateProcessStatus'], status_params_inprogress)
-
-        if oc_args_json['caseType'] == "BOR":
+        if case_metadata['caseType'] == "BOR":
             orchestrator_connection.log_trace("Lookup the citizen.")
             try:
                 person_full_name, person_go_id = jp.contact_lookup(
                     case_handler,
                     ssn,
                     credentials['sql_conn_string'],
-                    oc_args_json['hubUpdateResponseData'],
-                    oc_args_json['hubUpdateProcessStatus'],
+                    case_metadata['hubUpdateResponseData'],
+                    case_metadata['hubUpdateProcessStatus'],
                     status_params_failed,
                     uuid,
-                    oc_args_json['tableName']
+                    case_metadata['tableName']
                 )
             except Exception:
+                print("Error looking up the citizen.")
                 continue
 
             orchestrator_connection.log_trace("Check for existing citizen folder.")
@@ -58,16 +57,16 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                 case_folder_id = jp.check_case_folder(
                     case_handler,
                     case_data_handler,
-                    oc_args_json['caseType'],
+                    case_metadata['caseType'],
                     person_full_name,
                     person_go_id,
                     ssn,
                     credentials['sql_conn_string'],
-                    oc_args_json['hubUpdateResponseData'],
-                    oc_args_json['hubUpdateProcessStatus'],
+                    case_metadata['hubUpdateResponseData'],
+                    case_metadata['hubUpdateProcessStatus'],
                     status_params_failed,
                     uuid,
-                    oc_args_json['tableName']
+                    case_metadata['tableName']
                 )
             except Exception:
                 continue
@@ -77,38 +76,43 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                 try:
                     case_folder_id = jp.create_case_folder(
                         case_handler,
-                        oc_args_json['caseType'],
+                        case_metadata['caseType'],
                         person_full_name,
                         person_go_id,
                         ssn,
                         credentials['sql_conn_string'],
-                        oc_args_json['hubUpdateResponseData'],
-                        oc_args_json['hubUpdateProcessStatus'],
+                        case_metadata['hubUpdateResponseData'],
+                        case_metadata['hubUpdateProcessStatus'],
                         status_params_failed,
                         uuid,
-                        oc_args_json['tableName']
+                        case_metadata['tableName']
                     )
                 except Exception:
+                    print("Error creating citizen folder.")
                     continue
 
         orchestrator_connection.log_trace("Create case.")
         try:
             case_id = jp.create_case(
                 case_handler,
-                oc_args_json['os2formWebformId'],
-                oc_args_json['caseType'],
-                oc_args_json['caseData'],
+                orchestrator_connection,
+                parsed_form_data,
+                case_metadata['os2formWebformId'],
+                case_metadata['caseType'],
+                case_metadata['caseData'],
                 credentials['sql_conn_string'],
-                oc_args_json['hubUpdateResponseData'],
-                oc_args_json['hubUpdateProcessStatus'],
+                case_metadata['hubUpdateResponseData'],
+                case_metadata['hubUpdateProcessStatus'],
                 status_params_failed,
                 uuid,
-                oc_args_json['tableName'],
+                case_metadata['tableName'],
                 ssn,
                 person_full_name,
-                case_folder_id
+                case_folder_id,
+
             )
-        except Exception:
+        except Exception as e:
+            print(f"Error creating case: {e}")
             continue
 
         orchestrator_connection.log_trace("Journalize files.")
@@ -121,22 +125,23 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                 credentials['sql_conn_string'],
                 status_params_failed,
                 uuid,
-                oc_args_json,
+                case_metadata,
                 orchestrator_connection
             )
         except Exception:
+            print("Error journalizing files.")
             continue
 
-        execute_stored_procedure(credentials['sql_conn_string'], oc_args_json['hubUpdateProcessStatus'], status_params_success)
+        execute_stored_procedure(credentials['sql_conn_string'], case_metadata['hubUpdateProcessStatus'], status_params_success)
 
 
-def get_status_params(uuid, oc_args_json):
+def get_status_params(uuid, case_metadata):
     """
     Generates a set of status parameters for the process, based on the given UUID and JSON arguments.
 
     Args:
         uuid (str): The unique identifier for the current process.
-        oc_args_json (dict): A dictionary containing various process-related arguments, including table names.
+        case_metadata (dict): A dictionary containing various process-related arguments, including table names.
 
     Returns:
         tuple: A tuple containing three dictionaries:
@@ -147,33 +152,33 @@ def get_status_params(uuid, oc_args_json):
     status_params_inprogress = {
         "Status": ("str", "InProgress"),
         "uuid": ("str", f'{uuid}'),
-        "TableName": ("str", f'{oc_args_json["tableName"]}')
+        "TableName": ("str", f'{case_metadata["tableName"]}')
     }
     status_params_success = {
         "Status": ("str", "Successful"),
         "uuid": ("str", f'{uuid}'),
-        "TableName": ("str", f'{oc_args_json["tableName"]}')
+        "TableName": ("str", f'{case_metadata["tableName"]}')
     }
     status_params_failed = {
         "Status": ("str", "Failed"),
         "uuid": ("str", f'{uuid}'),
-        "TableName": ("str", f'{oc_args_json["tableName"]}')
+        "TableName": ("str", f'{case_metadata["tableName"]}')
     }
     return status_params_inprogress, status_params_success, status_params_failed
 
 
-def extract_ssn(oc_args_json, parsed_form_data):
+def extract_ssn(case_metadata, parsed_form_data):
     """
     Extracts the Social Security Number (SSN) from the parsed form data based on the provided webform ID.
 
     Args:
-        oc_args_json (dict): A dictionary containing various process-related arguments, including the webform ID.
+        case_metadata (dict): A dictionary containing various process-related arguments, including the webform ID.
         parsed_form_data (dict): A dictionary containing the parsed form data, including potential SSN fields.
 
     Returns:
         str or None: The extracted SSN as a string with hyphens removed, or None if the SSN is not present in the form data.
     """
-    match oc_args_json['os2formWebformId']:
+    match case_metadata['os2formWebformId']:
         case "tilmelding_til_modersmaalsunderv" | "indmeldelse_i_modtagelsesklasse" | "ansoegning_om_koersel_af_skoleel" | "ansoegning_om_midlertidig_koerse":
             if 'cpr_barnets_nummer' in parsed_form_data['data']:
                 return parsed_form_data['data']['cpr_barnets_nummer'].replace('-', '')
@@ -185,8 +190,3 @@ def extract_ssn(oc_args_json, parsed_form_data):
                 return parsed_form_data['data']['elevens_cpr_nummer'].replace('-', '')
         case _:
             return None
-
-
-if __name__ == "__main__":
-    oc = OrchestratorConnection.create_connection_from_args()
-    process(oc)
