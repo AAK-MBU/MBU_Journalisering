@@ -18,7 +18,8 @@ classifiers = [
 dependencies = [
     "OpenOrchestrator == 1.*",
     "Pillow == 9.5.0",
-    "MBU-dev-shared-components >= 0.0.50"
+    "MBU-dev-shared-components >= 0.0.50",
+    "itk-dev-shared-components",
 ]
 
 [project.optional-dependencies]
