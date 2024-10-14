@@ -6,6 +6,7 @@ from typing import Dict, List, Union
 from urllib.parse import urlparse, unquote
 import json
 import pyodbc
+from itk_dev_shared_components.smtp import smtp_util
 
 
 def _is_url(string: str) -> bool:
@@ -216,3 +217,42 @@ def fetch_case_metadata(connection_string, os2formwebform_id):
     except Exception as e:
         print(f"An error occurred: {e}")
         return None
+
+
+def notify_stakeholders(case_id, case_title, orchestrator_connection):
+    """Notify stakeholders about the journalized case."""
+    try:
+        email_sender = orchestrator_connection.get_constant("e-mail_noreply").value
+        email_subject = None
+        email_body = None
+        email_recipient = None
+
+        # Check for specific condition in case title
+        if "respekt for grænser" in case_title.lower():
+            email_recipient = "jalek@aarhus.dk"
+            email_subject = "Ny sag er blevet journaliseret: Respekt For Grænser"
+            email_body = (
+                f"<p>Vi vil informere dig om, at en ny sag er blevet journaliseret.</p>"
+                f"<p>"
+                f"<strong>Sagsid:</strong> {case_id}<br>"
+                f"<strong>Sagstitel:</strong> {case_title}"
+                f"</p>"
+            )
+
+        # Send email if recipient is found
+        if email_recipient is not None:
+            smtp_util.send_email(
+                receiver=email_recipient,
+                sender=email_sender,
+                subject=email_subject,
+                body=email_body,
+                html_body=email_body,
+                smtp_server="smtp.aarhuskommune.local",
+                smtp_port=25
+            )
+            orchestrator_connection.log_trace("Notification sent to stakeholder")
+        else:
+            print(f"No recipient found for case {case_id}")
+
+    except Exception as e:
+        print(f"Error sending notification mail, {case_id}: {e}")
