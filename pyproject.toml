@@ -19,7 +19,7 @@ dependencies = [
     "OpenOrchestrator == 1.*",
     "Pillow == 9.5.0",
     "MBU-dev-shared-components >= 0.0.50",
-    "itk-dev-shared-components",
+    "itk-dev-shared-components == 2.2.*"
 ]
 
 [project.optional-dependencies]
