@@ -9,7 +9,7 @@ import pyodbc
 from OpenOrchestrator.orchestrator_connection.connection import OrchestratorConnection
 from mbu_dev_shared_components.utils.db_stored_procedure_executor import execute_stored_procedure
 from mbu_dev_shared_components.os2forms.documents import download_file_bytes
-from robot_framework.case_manager.helper_functions import extract_filename_from_url, find_name_url_pairs, extract_key_value_pairs_from_json
+from robot_framework.case_manager.helper_functions import extract_filename_from_url, find_name_url_pairs, extract_key_value_pairs_from_json, notify_stakeholders
 
 
 class DatabaseError(Exception):
@@ -363,7 +363,7 @@ def create_case(
     Create a new case and update the database.
 
     Returns:
-        Optional[str]: The case ID if created successfully, otherwise None in case of an error.
+        Optional[str]: The case ID and case title if created successfully, otherwise None in case of an error.
     """
     try:
         case_title = determine_case_title(os2form_webform_id, person_full_name, ssn, parsed_form_data)
@@ -385,7 +385,7 @@ def create_case(
         }
         execute_sql_update(conn_string, update_response_data, sql_data_params)
         print(f"Case created with ID: {case_id}")
-        return case_id
+        return case_id, case_title
 
     except (DatabaseError, RequestError) as e:
         handle_database_error(conn_string, update_process_status, process_status_params_failed, e)
@@ -402,6 +402,7 @@ def create_case(
 def journalize_file(
     document_handler,
     case_id: str,
+    case_title,
     parsed_form_data: Dict[str, Any],
     os2_api_key: str,
     conn_string: str,
@@ -473,6 +474,7 @@ def journalize_file(
                 log_and_raise_error(orchestrator_connection, "An error occurred while journalizing the document.", RequestError("Request response failed."))
             orchestrator_connection.log_trace("Document was journalized.")
             print("Document was journalized.")
+            notify_stakeholders(case_id, case_title, orchestrator_connection)
 
         if case_metadata['documentData']['finalizeDocuments'] == "True":
             orchestrator_connection.log_trace("Finalizing document.")

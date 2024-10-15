@@ -93,7 +93,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
 
         orchestrator_connection.log_trace("Create case.")
         try:
-            case_id = jp.create_case(
+            case_id, case_title = jp.create_case(
                 case_handler,
                 orchestrator_connection,
                 parsed_form_data,
@@ -120,6 +120,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
             jp.journalize_file(
                 document_handler,
                 case_id,
+                case_title,
                 parsed_form_data,
                 credentials['os2_api_key'],
                 credentials['sql_conn_string'],
