@@ -112,7 +112,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
 
             )
         except Exception as e:
-            message = (f"Error creating case: {e}")
+            message = f"Error creating case: {e}"
             print(message)
             notify_stakeholders(None, None, orchestrator_connection, message)
             continue
@@ -132,7 +132,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                 orchestrator_connection
             )
         except Exception as e:
-            message = (f"Error journalizing files. {e}")
+            message = f"Error journalizing files. {e}"
             print(message)
             notify_stakeholders(case_id, case_title, orchestrator_connection, message)
             continue
