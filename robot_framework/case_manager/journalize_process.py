@@ -285,6 +285,8 @@ def determine_case_title(os2form_webform_id: str, person_full_name: str, ssn: st
                 department = parsed_form_data['data']['skole']
             elif omraade == "Dagtilbud":
                 department = parsed_form_data['data']['dagtilbud']
+                if not department:
+                    department = parsed_form_data['data']['daginstitution_udv_']
             elif omraade in {"Ungdomsskole", "Klub"}:
                 department = parsed_form_data['data'].get(omraade.lower(), "Ukendt afdeling")
             else:
