@@ -282,13 +282,16 @@ def determine_case_title(os2form_webform_id: str, person_full_name: str, ssn: st
         case "indmeld_kraenkelser_af_boern" | "respekt_for_graenser_privat" | "respekt_for_graenser":
             omraade = parsed_form_data['data']['omraade']
             if omraade == "Skole":
-                department = parsed_form_data['data']['skole']
+                department = parsed_form_data['data'].get('skole', "Ukendt afdeling")
             elif omraade == "Dagtilbud":
-                department = parsed_form_data['data']['dagtilbud']
+                department = parsed_form_data['data'].get('dagtilbud')
+                if not department:
+                    department = parsed_form_data['data'].get('daginstitution_udv_', "Ukendt afdeling")
             elif omraade in {"Ungdomsskole", "Klub"}:
                 department = parsed_form_data['data'].get(omraade.lower(), "Ukendt afdeling")
             else:
-                department = "Ukendt afdeling"
+                department = "Ukendt afdeling"  # Default if no match
+
             return f"{department} - Respekt for grænser"
 
 
