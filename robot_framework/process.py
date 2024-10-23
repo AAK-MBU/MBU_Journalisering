@@ -9,7 +9,7 @@ from mbu_dev_shared_components.getorganized.objects import CaseDataJson
 from robot_framework.case_manager.case_handler import CaseHandler
 from robot_framework.case_manager.document_handler import DocumentHandler
 from robot_framework.case_manager import journalize_process as jp
-from robot_framework.case_manager.helper_functions import fetch_case_metadata
+from robot_framework.case_manager.helper_functions import fetch_case_metadata, notify_stakeholders
 
 
 def process(orchestrator_connection: OrchestratorConnection) -> None:
@@ -112,7 +112,9 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
 
             )
         except Exception as e:
-            print(f"Error creating case: {e}")
+            message = (f"Error creating case: {e}")
+            print(message)
+            notify_stakeholders(None, None, orchestrator_connection, message)
             continue
 
         orchestrator_connection.log_trace("Journalize files.")
@@ -129,8 +131,10 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                 case_metadata,
                 orchestrator_connection
             )
-        except Exception:
-            print("Error journalizing files.")
+        except Exception as e:
+            message = (f"Error journalizing files. {e}")
+            print(message)
+            notify_stakeholders(case_id, case_title, orchestrator_connection, message)
             continue
 
         execute_stored_procedure(credentials['sql_conn_string'], case_metadata['hubUpdateProcessStatus'], status_params_success)

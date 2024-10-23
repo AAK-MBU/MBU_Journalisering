@@ -219,13 +219,27 @@ def fetch_case_metadata(connection_string, os2formwebform_id):
         return None
 
 
-def notify_stakeholders(case_id, case_title, orchestrator_connection):
+def notify_stakeholders(case_id, case_title, orchestrator_connection, error_message):
     """Notify stakeholders about the journalized case."""
     try:
         email_sender = orchestrator_connection.get_constant("e-mail_noreply").value
         email_subject = None
         email_body = None
         email_recipient = None
+
+        if error_message:
+            email_recipient = "rpa@mbu.aarhus.dk"
+            email_subject = "Fejl ved journalisering af sag"
+            caseid = case_id if case_id else "Ukendt"
+            casetitle = case_title if case_title else "Ukendt"
+            email_body = (
+                f"<p>Der opstod en fejl ved journalisering af en sag.</p>"
+                f"<p>"
+                f"<strong>Sagsid:</strong> {caseid}<br>"
+                f"<strong>Sagstitel:</strong> {casetitle}<br>"
+                f"<strong>Fejlbesked:</strong> {error_message}"
+                f"</p>"
+            )
 
         if "respekt for grænser" in case_title.lower():
             email_recipient = "respekt@mbu.aarhus.dk", "edisa@aarhus.dk"

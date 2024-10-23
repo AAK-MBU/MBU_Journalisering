@@ -282,13 +282,15 @@ def determine_case_title(os2form_webform_id: str, person_full_name: str, ssn: st
         case "indmeld_kraenkelser_af_boern" | "respekt_for_graenser_privat" | "respekt_for_graenser":
             omraade = parsed_form_data['data']['omraade']
             if omraade == "Skole":
-                department = parsed_form_data['data'].get('skole', "Ukendt afdeling")
+                department = parsed_form_data['data'].get('skole', "Ukendt skole")
             elif omraade == "Dagtilbud":
                 department = parsed_form_data['data'].get('dagtilbud')
                 if not department:
-                    department = parsed_form_data['data'].get('daginstitution_udv_', "Ukendt afdeling")
-            elif omraade in {"Ungdomsskole", "Klub"}:
-                department = parsed_form_data['data'].get(omraade.lower(), "Ukendt afdeling")
+                    department = parsed_form_data['data'].get('daginstitution_udv_', "Ukendt dagtilbud")
+            elif omraade == "Ungdomsskole":
+                department = parsed_form_data['data'].get('ungdomsskole', "Ukendt ungdomsskole")
+            elif omraade == "Klub":
+                department = parsed_form_data['data'].get('klub', "Ukendt klub")
             else:
                 department = "Ukendt afdeling"  # Default if no match
 
@@ -477,7 +479,7 @@ def journalize_file(
                 log_and_raise_error(orchestrator_connection, "An error occurred while journalizing the document.", RequestError("Request response failed."))
             orchestrator_connection.log_trace("Document was journalized.")
             print("Document was journalized.")
-            notify_stakeholders(case_id, case_title, orchestrator_connection)
+            notify_stakeholders(case_id, case_title, orchestrator_connection, False)
 
         if case_metadata['documentData']['finalizeDocuments'] == "True":
             orchestrator_connection.log_trace("Finalizing document.")
