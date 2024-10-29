@@ -2,6 +2,7 @@
 This module provides helper functions.
 """
 import re
+import os
 from typing import Dict, List, Union
 from urllib.parse import urlparse, unquote
 import json
@@ -113,7 +114,7 @@ def extract_filename_from_url(url: str) -> str:
     return original_filename
 
 
-def extract_filename_from_url_without_extension(self, url: str) -> str:
+def extract_filename_from_url_without_extension(url: str) -> str:
     """
     Extract the filename from a given URL without the extension.
 
