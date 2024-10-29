@@ -439,13 +439,15 @@ def journalize_file(
             for key, value in document_category_json.items():
                 if value == name:
                     document_category = key
+                else:
+                    document_category = 'Indgående'
 
             document_data = document_handler.create_document_metadata(
                 case_id=case_id,
                 filename=filename,
                 data_in_bytes=list(file_bytes),
                 document_date=received_date,
-                document_title=name,
+                document_title=filename,
                 document_receiver="",
                 document_category=document_category,
                 overwrite="true"
