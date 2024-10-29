@@ -63,23 +63,26 @@ def find_name_url_pairs(data: Union[Dict[str, Union[str, dict, list]], list]) ->
     """
     name_url_pairs = {}
 
+    def extract_attachments(attachments: dict):
+        """N/A"""
+        for attachment_value in attachments.values():
+            if isinstance(attachment_value, dict) and "name" in attachment_value and "url" in attachment_value:
+                name_url_pairs[attachment_value["name"]] = attachment_value["url"]
+
+    def extract_linked(linked: dict):
+        """N/A"""
+        for linked_value in linked.values():
+            if isinstance(linked_value, dict):
+                for item_data in linked_value.values():
+                    if isinstance(item_data, dict) and "id" in item_data and "url" in item_data:
+                        name_url_pairs[item_data["id"]] = item_data["url"]
+
     if isinstance(data, dict):
         for key, value in data.items():
             if key == "attachments" and isinstance(value, dict):
-                for attachment_key, attachment_value in value.items():
-                    if isinstance(attachment_value, dict) and "name" in attachment_value and "url" in attachment_value:
-                        name_url_pairs[attachment_value["name"]] = attachment_value["url"]
-                        print(attachment_key)
-
+                extract_attachments(value)
             elif key == "linked" and isinstance(value, dict):
-                for linked_key, linked_value in value.items():
-                    print(linked_key)
-                    if isinstance(linked_value, dict):
-                        for item_id, item_data in linked_value.items():
-                            if isinstance(item_data, dict) and "id" in item_data and "url" in item_data:
-                                name_url_pairs[item_data["id"]] = item_data["url"]
-                                print(item_id)
-
+                extract_linked(value)
             elif isinstance(value, (dict, list)):
                 name_url_pairs.update(find_name_url_pairs(value))
 
