@@ -113,6 +113,24 @@ def extract_filename_from_url(url: str) -> str:
     return original_filename
 
 
+def extract_filename_from_url_without_extension(self, url: str) -> str:
+    """
+    Extract the filename from a given URL without the extension.
+
+    Args:
+        url (str): The URL to extract the filename from.
+
+    Returns:
+        str: The extracted filename without extension.
+    """
+    parsed_url = urlparse(url)
+    path_segments = parsed_url.path.split('/')
+    filename = path_segments[-1]
+    original_filename = unquote(filename)
+    filename_without_extension, _ = os.path.splitext(original_filename)
+    return filename_without_extension
+
+
 def extract_key_value_pairs_from_json(json_data, node_name=None, separator=";#", target_type=str):
     """
     Recursively traverses a JSON object (a dictionary or list) and extracts key-value pairs
