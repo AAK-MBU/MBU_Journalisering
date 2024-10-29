@@ -417,12 +417,13 @@ def journalize_file(
     orchestrator_connection: OrchestratorConnection
 ) -> None:
     """Journalize associated files in the 'Document' folder under the citizen case."""
-    
+
     def upload_single_document(name, url, received_date, document_category):
         """N/A"""
         filename = extract_filename_from_url(url)
         file_bytes = download_file_bytes(url, os2_api_key)
-        
+        print(name)
+
         document_data = document_handler.create_document_metadata(
             case_id=case_id,
             filename=filename,
@@ -433,11 +434,11 @@ def journalize_file(
             document_category=document_category,
             overwrite="true"
         )
-        
+
         response = document_handler.upload_document(document_data, '/_goapi/Documents/AddToCase')
         if not response.ok:
             log_and_raise_error(orchestrator_connection, "An error occurred when uploading the document.", RequestError("Request response failed."))
-        
+
         document_id = response.json()["DocId"]
         orchestrator_connection.log_trace(f"Document uploaded with ID: {document_id}")
         return {"DocumentId": str(document_id)}, document_id
@@ -451,14 +452,14 @@ def journalize_file(
             if case_metadata['documentData']['useCompletedDateFromFormAsDate'] == "True"
             else ""
         )
-        
+
         documents, document_ids = [], []
         for name, url in urls.items():
             document_category = document_category_json.get(name, 'Indgående')
             doc, doc_id = upload_single_document(name, url, received_date, document_category)
             documents.append(doc)
             document_ids.append(doc_id)
-        
+
         return documents, document_ids
 
     def handle_journalization(document_ids):
