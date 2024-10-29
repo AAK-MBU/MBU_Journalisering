@@ -9,7 +9,7 @@ import pyodbc
 from OpenOrchestrator.orchestrator_connection.connection import OrchestratorConnection
 from mbu_dev_shared_components.utils.db_stored_procedure_executor import execute_stored_procedure
 from mbu_dev_shared_components.os2forms.documents import download_file_bytes
-from robot_framework.case_manager.helper_functions import extract_filename_from_url, find_name_url_pairs, extract_key_value_pairs_from_json, notify_stakeholders
+from robot_framework.case_manager.helper_functions import extract_filename_from_url, find_name_url_pairs, extract_key_value_pairs_from_json, notify_stakeholders, extract_filename_from_url_without_extension
 
 
 class DatabaseError(Exception):
@@ -421,6 +421,7 @@ def journalize_file(
     def upload_single_document(name, url, received_date, document_category):
         """N/A"""
         filename = extract_filename_from_url(url)
+        filename_without_extension = extract_filename_from_url_without_extension(url)
         file_bytes = download_file_bytes(url, os2_api_key)
         print(name)
 
@@ -429,7 +430,7 @@ def journalize_file(
             filename=filename,
             data_in_bytes=list(file_bytes),
             document_date=received_date,
-            document_title=filename,
+            document_title=filename_without_extension,
             document_receiver="",
             document_category=document_category,
             overwrite="true"
