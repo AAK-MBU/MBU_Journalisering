@@ -417,53 +417,70 @@ def journalize_file(
     orchestrator_connection: OrchestratorConnection
 ) -> None:
     """Journalize associated files in the 'Document' folder under the citizen case."""
+    
+    def upload_single_document(name, url, received_date, document_category):
+        """N/A"""
+        filename = extract_filename_from_url(url)
+        file_bytes = download_file_bytes(url, os2_api_key)
+        
+        document_data = document_handler.create_document_metadata(
+            case_id=case_id,
+            filename=filename,
+            data_in_bytes=list(file_bytes),
+            document_date=received_date,
+            document_title=filename,
+            document_receiver="",
+            document_category=document_category,
+            overwrite="true"
+        )
+        
+        response = document_handler.upload_document(document_data, '/_goapi/Documents/AddToCase')
+        if not response.ok:
+            log_and_raise_error(orchestrator_connection, "An error occurred when uploading the document.", RequestError("Request response failed."))
+        
+        document_id = response.json()["DocId"]
+        orchestrator_connection.log_trace(f"Document uploaded with ID: {document_id}")
+        return {"DocumentId": str(document_id)}, document_id
+
+    def process_documents():
+        """N/A"""
+        urls = find_name_url_pairs(parsed_form_data)
+        document_category_json = extract_key_value_pairs_from_json(case_metadata['documentData'], node_name="documentCategory")
+        received_date = (
+            parsed_form_data['entity']['completed'][0]['value']
+            if case_metadata['documentData']['useCompletedDateFromFormAsDate'] == "True"
+            else ""
+        )
+        
+        documents, document_ids = [], []
+        for name, url in urls.items():
+            document_category = document_category_json.get(name, 'Indgående')
+            doc, doc_id = upload_single_document(name, url, received_date, document_category)
+            documents.append(doc)
+            document_ids.append(doc_id)
+        
+        return documents, document_ids
+
+    def handle_journalization(document_ids):
+        if case_metadata['documentData'].get('journalizeDocuments') == "True":
+            orchestrator_connection.log_trace("Journalizing document.")
+            response = document_handler.journalize_document(document_ids, '/_goapi/Documents/MarkMultipleAsCaseRecord/ByDocumentId')
+            if not response.ok:
+                log_and_raise_error(orchestrator_connection, "An error occurred while journalizing the document.", RequestError("Request response failed."))
+            orchestrator_connection.log_trace("Document was journalized.")
+            notify_stakeholders(case_id, case_title, orchestrator_connection, False)
+
+    def handle_finalization(document_ids):
+        if case_metadata['documentData'].get('finalizeDocuments') == "True":
+            orchestrator_connection.log_trace("Finalizing document.")
+            response = document_handler.finalize_document(document_ids, '/_goapi/Documents/FinalizeMultiple/ByDocumentId')
+            if not response.ok:
+                log_and_raise_error(orchestrator_connection, "An error occurred while finalizing the document.", RequestError("Request response failed."))
+            orchestrator_connection.log_trace("Document was finalized.")
+
     try:
         orchestrator_connection.log_trace("Uploading document(s) to the case.")
-
-        urls = find_name_url_pairs(parsed_form_data)
-        documents = []
-        document_ids = []
-
-        if case_metadata['documentData']['useCompletedDateFromFormAsDate'] == "True":
-            received_date = parsed_form_data['entity']['completed'][0]['value']
-        else:
-            received_date = ""
-
-        document_category_json = extract_key_value_pairs_from_json(case_metadata['documentData'], node_name="documentCategory")
-
-        for name, url in urls.items():
-            filename = extract_filename_from_url(url)
-            file_bytes = download_file_bytes(url, os2_api_key)
-
-            document_category = ""
-            for key, value in document_category_json.items():
-                if value == name:
-                    document_category = key
-                else:
-                    document_category = 'Indgående'
-
-            document_data = document_handler.create_document_metadata(
-                case_id=case_id,
-                filename=filename,
-                data_in_bytes=list(file_bytes),
-                document_date=received_date,
-                document_title=filename,
-                document_receiver="",
-                document_category=document_category,
-                overwrite="true"
-            )
-
-            orchestrator_connection.log_trace("Uploading document(s).")
-            response = document_handler.upload_document(document_data, '/_goapi/Documents/AddToCase')
-
-            if not response.ok:
-                log_and_raise_error(orchestrator_connection, "An error occurred when uploading the document.", RequestError("Request response failed."))
-
-            document_id = response.json()["DocId"]
-            documents.append({"DocumentId": str(document_id)})
-            document_ids.append(document_id)
-            orchestrator_connection.log_trace("The document was uploaded.")
-            print(f"Document uploaded with ID: {document_id}")
+        documents, document_ids = process_documents()
 
         table_name = case_metadata['tableName']
         sql_data_params = {
@@ -474,22 +491,8 @@ def journalize_file(
         }
         execute_sql_update(conn_string, case_metadata['hubUpdateResponseData'], sql_data_params)
 
-        if case_metadata['documentData']['journalizeDocuments'] == "True":
-            orchestrator_connection.log_trace("Journalizing document.")
-            response_journalize_document = document_handler.journalize_document(document_ids, '/_goapi/Documents/MarkMultipleAsCaseRecord/ByDocumentId')
-            if not response_journalize_document.ok:
-                log_and_raise_error(orchestrator_connection, "An error occurred while journalizing the document.", RequestError("Request response failed."))
-            orchestrator_connection.log_trace("Document was journalized.")
-            print("Document was journalized.")
-            notify_stakeholders(case_id, case_title, orchestrator_connection, False)
-
-        if case_metadata['documentData']['finalizeDocuments'] == "True":
-            orchestrator_connection.log_trace("Finalizing document.")
-            response_journalize_document = document_handler.finalize_document(document_ids, '/_goapi/Documents/FinalizeMultiple/ByDocumentId')
-            if not response_journalize_document.ok:
-                log_and_raise_error(orchestrator_connection, "An error occurred while finalizing the document.", RequestError("Request response failed."))
-            orchestrator_connection.log_trace("Document was finalized.")
-            print("Document was finalized.")
+        handle_journalization(document_ids)
+        handle_finalization(document_ids)
 
     except (DatabaseError, RequestError) as e:
         print(f"An error occurred: {e}")

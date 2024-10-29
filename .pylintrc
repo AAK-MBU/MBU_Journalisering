@@ -6,4 +6,5 @@ disable =
   R0914, # Too many local variables
   W0718, # Catching too general exception Exception (broad-exception-caught)
   R0917, # Too many positional arguments
-  R0915 # Too many statements
+  R0915, # Too many statements
+  R0912 # Too many branches
