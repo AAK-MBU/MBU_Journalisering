@@ -442,7 +442,7 @@ def journalize_file(
 
         document_id = response.json()["DocId"]
         orchestrator_connection.log_trace(f"Document uploaded with ID: {document_id}")
-        return {"DocumentId": str(document_id)}, document_id
+        return {"DocumentId": str(document_id)}, document_id, file_bytes
 
     def process_documents():
         """N/A"""
@@ -457,20 +457,20 @@ def journalize_file(
         documents, document_ids = [], []
         for name, url in urls.items():
             document_category = document_category_json.get(name, 'Indgående')
-            doc, doc_id = upload_single_document(name, url, received_date, document_category)
+            doc, doc_id, file_bytes = upload_single_document(name, url, received_date, document_category)
             documents.append(doc)
             document_ids.append(doc_id)
 
-        return documents, document_ids
+        return documents, document_ids, file_bytes
 
-    def handle_journalization(document_ids):
+    def handle_journalization(document_ids, file_bytes):
         if case_metadata['documentData'].get('journalizeDocuments') == "True":
             orchestrator_connection.log_trace("Journalizing document.")
             response = document_handler.journalize_document(document_ids, '/_goapi/Documents/MarkMultipleAsCaseRecord/ByDocumentId')
             if not response.ok:
                 log_and_raise_error(orchestrator_connection, "An error occurred while journalizing the document.", RequestError("Request response failed."))
             orchestrator_connection.log_trace("Document was journalized.")
-            notify_stakeholders(case_id, case_title, orchestrator_connection, False)
+            notify_stakeholders(case_id, case_title, orchestrator_connection, False, file_bytes)
 
     def handle_finalization(document_ids):
         if case_metadata['documentData'].get('finalizeDocuments') == "True":
@@ -482,7 +482,7 @@ def journalize_file(
 
     try:
         orchestrator_connection.log_trace("Uploading document(s) to the case.")
-        documents, document_ids = process_documents()
+        documents, document_ids, file_bytes = process_documents()
 
         table_name = case_metadata['tableName']
         sql_data_params = {
@@ -493,7 +493,7 @@ def journalize_file(
         }
         execute_sql_update(conn_string, case_metadata['hubUpdateResponseData'], sql_data_params)
 
-        handle_journalization(document_ids)
+        handle_journalization(document_ids, file_bytes)
         handle_finalization(document_ids)
 
     except (DatabaseError, RequestError) as e:

@@ -6,6 +6,7 @@ import os
 from typing import Dict, List, Union
 from urllib.parse import urlparse, unquote
 import json
+from io import BytesIO
 import pyodbc
 from itk_dev_shared_components.smtp import smtp_util
 
@@ -254,7 +255,7 @@ def fetch_case_metadata(connection_string, os2formwebform_id):
         return None
 
 
-def notify_stakeholders(case_id, case_title, orchestrator_connection, error_message):
+def notify_stakeholders(case_id, case_title, orchestrator_connection, error_message, attachment_bytes):
     """Notify stakeholders about the journalized case."""
     try:
         email_sender = orchestrator_connection.get_constant("e-mail_noreply").value
@@ -287,6 +288,11 @@ def notify_stakeholders(case_id, case_title, orchestrator_connection, error_mess
                 f"</p>"
             )
 
+        attachments = []
+        if attachment_bytes:
+            attachment_file = BytesIO(attachment_bytes)
+            attachments.append(smtp_util.EmailAttachment(file=attachment_file, file_name=f"journalisering_{case_id}.pdf"))
+
         # Send email if recipient is found
         if email_recipient is not None:
             smtp_util.send_email(
@@ -296,11 +302,13 @@ def notify_stakeholders(case_id, case_title, orchestrator_connection, error_mess
                 body=email_body,
                 html_body=email_body,
                 smtp_server="smtp.aarhuskommune.local",
-                smtp_port=25
+                smtp_port=25,
+                attachments=attachments if attachments else None
             )
             orchestrator_connection.log_trace("Notification sent to stakeholder")
         else:
-            print(f"No recipient found for case {case_id}")
+            orchestrator_connection.log_trace("Stakeholders not notified. No recipient found for notification")
 
     except Exception as e:
+        orchestrator_connection.log_trace(f"Error sending notification mail, {case_id}: {e}")
         print(f"Error sending notification mail, {case_id}: {e}")
