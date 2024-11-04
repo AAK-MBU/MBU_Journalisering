@@ -262,12 +262,12 @@ def notify_stakeholders(case_id, case_title, orchestrator_connection, error_mess
         email_subject = None
         email_body = None
         email_recipient = None
+        caseid = case_id if case_id else "Ukendt"
+        casetitle = case_title if case_title else "Ukendt"
 
         if error_message:
             email_recipient = "rpa@mbu.aarhus.dk"
             email_subject = "Fejl ved journalisering af sag"
-            caseid = case_id if case_id else "Ukendt"
-            casetitle = case_title if case_title else "Ukendt"
             email_body = (
                 f"<p>Der opstod en fejl ved journalisering af en sag.</p>"
                 f"<p>"
@@ -277,21 +277,21 @@ def notify_stakeholders(case_id, case_title, orchestrator_connection, error_mess
                 f"</p>"
             )
 
-        if "respekt for grænser" in case_title.lower():
+        if "respekt for grænser" in casetitle.lower():
             email_recipient = "respekt@mbu.aarhus.dk", "edisa@aarhus.dk"
             email_subject = "Ny sag er blevet journaliseret: Respekt For Grænser"
             email_body = (
                 f"<p>Vi vil informere dig om, at en ny sag er blevet journaliseret.</p>"
                 f"<p>"
-                f"<strong>Sagsid:</strong> {case_id}<br>"
-                f"<strong>Sagstitel:</strong> {case_title}"
+                f"<strong>Sagsid:</strong> {caseid}<br>"
+                f"<strong>Sagstitel:</strong> {casetitle}"
                 f"</p>"
             )
 
         attachments = []
         if attachment_bytes:
             attachment_file = BytesIO(attachment_bytes)
-            attachments.append(smtp_util.EmailAttachment(file=attachment_file, file_name=f"journalisering_{case_id}.pdf"))
+            attachments.append(smtp_util.EmailAttachment(file=attachment_file, file_name=f"journalisering_{caseid}.pdf"))
 
         # Send email if recipient is found
         if email_recipient is not None:
@@ -310,5 +310,5 @@ def notify_stakeholders(case_id, case_title, orchestrator_connection, error_mess
             orchestrator_connection.log_trace("Stakeholders not notified. No recipient found for notification")
 
     except Exception as e:
-        orchestrator_connection.log_trace(f"Error sending notification mail, {case_id}: {e}")
-        print(f"Error sending notification mail, {case_id}: {e}")
+        orchestrator_connection.log_trace(f"Error sending notification mail, {caseid}: {e}")
+        print(f"Error sending notification mail, {caseid}: {e}")
