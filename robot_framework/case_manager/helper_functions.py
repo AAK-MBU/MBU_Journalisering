@@ -278,7 +278,7 @@ def notify_stakeholders(case_id, case_title, orchestrator_connection, error_mess
             )
 
         if "respekt for grænser" in casetitle.lower():
-            email_recipient = "respekt@mbu.aarhus.dk", "edisa@aarhus.dk"
+            email_recipient = "respekt@mbu.aarhus.dk"
             email_subject = "Ny sag er blevet journaliseret: Respekt For Grænser"
             email_body = (
                 f"<p>Vi vil informere dig om, at en ny sag er blevet journaliseret.</p>"
