@@ -72,10 +72,24 @@ def handle_database_error(
     raise exception
 
 
-def get_forms_data(conn_string: str, table_name: str, params: Optional[List[Any]] = None) -> List[Dict[str, Any]]:
+def get_forms_data(conn_string: str, form_type: str, params: Optional[List[Any]] = None) -> List[Dict[str, Any]]:
     """Retrieve the data for the specific form from the database."""
     try:
-        query = f"SELECT uuid, data FROM rpa.rpa.{table_name} WHERE process_status IS NULL"
+        query = f"""
+            SELECT
+                j.form_id
+                ,f.form_data
+                ,CAST(f.form_submitted_date AS datetime) AS form_submitted_date
+            FROM
+                [RPA].[journalizing].[Journalizing] j
+            JOIN
+                [RPA].[journalizing].[Forms] f on f.form_id = j.form_id
+            WHERE
+                f.form_type = '{form_type}'
+                AND j.status IS NULL
+            ORDER BY
+                f.form_submitted_date ASC        
+        """
         with pyodbc.connect(conn_string) as conn:
             with conn.cursor() as cursor:
                 cursor.execute(query, params or [])
@@ -109,8 +123,7 @@ def contact_lookup(
     update_response_data: str,
     update_process_status: str,
     process_status_params_failed: str,
-    uuid: str,
-    table_name: str
+    form_id: str
 ) -> Optional[Tuple[str, str]]:
     """
     Perform contact lookup and update the database with the contact information.
@@ -131,8 +144,7 @@ def contact_lookup(
         sql_data_params = {
             "StepName": ("str", "ContactLookup"),
             "JsonFragment": ("str", json.dumps({"ContactId": person_go_id})),
-            "uuid": ("str", uuid),
-            "TableName": ("str", table_name)
+            "form_id": ("str", form_id)
         }
         execute_sql_update(conn_string, update_response_data, sql_data_params)
 
@@ -159,8 +171,7 @@ def check_case_folder(
     update_response_data: str,
     update_process_status: str,
     process_status_params_failed: str,
-    uuid: str,
-    table_name: str
+    form_id: str
 ) -> Optional[str]:
     """
     Check if a case folder exists for the person and update the database.
@@ -182,8 +193,7 @@ def check_case_folder(
             sql_data_params = {
                 "StepName": ("str", "CaseFolder"),
                 "JsonFragment": ("str", json.dumps({"CaseFolderId": case_folder_id})),
-                "uuid": ("str", uuid),
-                "TableName": ("str", table_name)
+                "form_id": ("str", form_id)
             }
             execute_sql_update(conn_string, update_response_data, sql_data_params)
 
@@ -209,8 +219,7 @@ def create_case_folder(
     update_response_data: str,
     update_process_status: str,
     process_status_params_failed: str,
-    uuid: str,
-    table_name: str
+    form_id: str
 ) -> Optional[str]:
     """
     Create a new case folder if it doesn't exist.
@@ -229,8 +238,7 @@ def create_case_folder(
         sql_data_params = {
             "StepName": ("str", "CaseFolder"),
             "JsonFragment": ("str", json.dumps({"CaseFolderId": case_folder_id})),
-            "uuid": ("str", uuid),
-            "TableName": ("str", table_name)
+            "form_id": ("str", form_id)
         }
         execute_sql_update(conn_string, update_response_data, sql_data_params)
 
@@ -357,8 +365,7 @@ def create_case(
     update_response_data: str,
     update_process_status: str,
     process_status_params_failed: str,
-    uuid: str,
-    table_name: str,
+    form_id: str,
     ssn: str = None,
     person_full_name: str = None,
     case_folder_id: str = None,
@@ -385,8 +392,7 @@ def create_case(
         sql_data_params = {
             "StepName": ("str", "Case"),
             "JsonFragment": ("str", json.dumps({"CaseId": case_id})),
-            "uuid": ("str", uuid),
-            "TableName": ("str", table_name)
+            "form_id": ("str", form_id)
         }
         execute_sql_update(conn_string, update_response_data, sql_data_params)
         print(f"Case created with ID: {case_id}")
@@ -412,7 +418,7 @@ def journalize_file(
     os2_api_key: str,
     conn_string: str,
     process_status_params_failed: str,
-    uuid: str,
+    form_id: str,
     case_metadata: str,
     orchestrator_connection: OrchestratorConnection
 ) -> None:
@@ -484,23 +490,21 @@ def journalize_file(
         orchestrator_connection.log_trace("Uploading document(s) to the case.")
         documents, document_ids, file_bytes = process_documents()
 
-        table_name = case_metadata['tableName']
         sql_data_params = {
             "StepName": ("str", "Case Files"),
             "JsonFragment": ("str", json.dumps(documents)),
-            "uuid": ("str", uuid),
-            "TableName": ("str", table_name)
+            "form_id": ("str", form_id)
         }
-        execute_sql_update(conn_string, case_metadata['hubUpdateResponseData'], sql_data_params)
+        execute_sql_update(conn_string, case_metadata['spUpdateResponseData'], sql_data_params)
 
         handle_journalization(document_ids, file_bytes)
         handle_finalization(document_ids)
 
     except (DatabaseError, RequestError) as e:
         print(f"An error occurred: {e}")
-        handle_database_error(conn_string, case_metadata['hubUpdateProcessStatus'], process_status_params_failed, e)
+        handle_database_error(conn_string, case_metadata['spUpdateProcessStatus'], process_status_params_failed, e)
 
     except Exception as e:
         print(f"An unexpected error occurred during file journalization: {e}")
-        handle_database_error(conn_string, case_metadata['hubUpdateProcessStatus'], process_status_params_failed, RuntimeError(
+        handle_database_error(conn_string, case_metadata['spUpdateProcessStatus'], process_status_params_failed, RuntimeError(
             f"An unexpected error occurred during file journalization: {e}"))
