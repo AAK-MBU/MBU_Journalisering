@@ -18,35 +18,38 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
     oc_args_json = json.loads(orchestrator_connection.process_arguments)
     os2formwebform_id = oc_args_json['os2formWebformId']
     credentials = jp.get_credentials_and_constants(orchestrator_connection)
-    case_metadata = fetch_case_metadata(credentials['sql_conn_string'], os2formwebform_id)
-    forms_data = jp.get_forms_data(credentials['sql_conn_string'], case_metadata['tableName'])
+    case_metadata = fetch_case_metadata(connection_string=credentials['sql_conn_string'], os2formwebform_id=os2formwebform_id)
+    forms_data = jp.get_forms_data(conn_string=credentials['sql_conn_string'], form_type=os2formwebform_id)
 
     for form in forms_data:
         case_handler = CaseHandler(credentials['go_api_endpoint'], credentials['go_api_username'], credentials['go_api_password'])
         case_data_handler = CaseDataJson()
         document_handler = DocumentHandler(credentials['go_api_endpoint'], credentials['go_api_username'], credentials['go_api_password'])
-        uuid = form['uuid']
-        orchestrator_connection.log_trace(f"UUID: {uuid}")
-        parsed_form_data = json.loads(form['data'])
-        ssn = extract_ssn(case_metadata, parsed_form_data)
+
+        form_id = form['form_id']
+        form_submitted_date = form['form_submitted_date']
+        parsed_form_data = json.loads(form['form_data'])
+        ssn = extract_ssn(os2formwebform_id=os2formwebform_id, parsed_form_data=parsed_form_data)
         person_full_name = None
         case_folder_id = None
 
-        status_params_inprogress, status_params_success, status_params_failed = get_status_params(uuid, case_metadata)
-        execute_stored_procedure(credentials['sql_conn_string'], case_metadata['hubUpdateProcessStatus'], status_params_inprogress)
+        orchestrator_connection.log_trace(f"form_id: {form_id}")
+        orchestrator_connection.log_trace(f"form_submitted_date: {form_submitted_date}")
+
+        status_params_inprogress, status_params_success, status_params_failed = get_status_params(form_id)
+        execute_stored_procedure(credentials['sql_conn_string'], case_metadata['spUpdateProcessStatus'], status_params_inprogress)
 
         if case_metadata['caseType'] == "BOR":
             orchestrator_connection.log_trace("Lookup the citizen.")
             try:
                 person_full_name, person_go_id = jp.contact_lookup(
-                    case_handler,
-                    ssn,
-                    credentials['sql_conn_string'],
-                    case_metadata['hubUpdateResponseData'],
-                    case_metadata['hubUpdateProcessStatus'],
-                    status_params_failed,
-                    uuid,
-                    case_metadata['tableName']
+                    case_handler=case_handler,
+                    ssn=ssn,
+                    conn_string=credentials['sql_conn_string'],
+                    update_response_data=case_metadata['spUpdateResponseData'],
+                    update_process_status=case_metadata['spUpdateProcessStatus'],
+                    process_status_params_failed=status_params_failed,
+                    form_id=form_id
                 )
             except Exception:
                 print("Error looking up the citizen.")
@@ -55,18 +58,17 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
             orchestrator_connection.log_trace("Check for existing citizen folder.")
             try:
                 case_folder_id = jp.check_case_folder(
-                    case_handler,
-                    case_data_handler,
-                    case_metadata['caseType'],
-                    person_full_name,
-                    person_go_id,
-                    ssn,
-                    credentials['sql_conn_string'],
-                    case_metadata['hubUpdateResponseData'],
-                    case_metadata['hubUpdateProcessStatus'],
-                    status_params_failed,
-                    uuid,
-                    case_metadata['tableName']
+                    case_handler=case_handler,
+                    case_data_handler=case_data_handler,
+                    case_type=case_metadata['caseType'],
+                    person_full_name=person_full_name,
+                    person_go_id=person_go_id,
+                    ssn=ssn,
+                    conn_string=credentials['sql_conn_string'],
+                    update_response_data=case_metadata['spUpdateResponseData'],
+                    update_process_status=case_metadata['spUpdateProcessStatus'],
+                    process_status_params_failed=status_params_failed,
+                    form_id=form_id
                 )
             except Exception:
                 continue
@@ -75,17 +77,16 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                 orchestrator_connection.log_trace("Create citizen folder.")
                 try:
                     case_folder_id = jp.create_case_folder(
-                        case_handler,
-                        case_metadata['caseType'],
-                        person_full_name,
-                        person_go_id,
-                        ssn,
-                        credentials['sql_conn_string'],
-                        case_metadata['hubUpdateResponseData'],
-                        case_metadata['hubUpdateProcessStatus'],
-                        status_params_failed,
-                        uuid,
-                        case_metadata['tableName']
+                        case_handler=case_handler,
+                        case_type=case_metadata['caseType'],
+                        person_full_name=person_full_name,
+                        person_go_id=person_go_id,
+                        ssn=ssn,
+                        conn_string=credentials['sql_conn_string'],
+                        update_response_data=case_metadata['spUpdateResponseData'],
+                        update_process_status=case_metadata['spUpdateProcessStatus'],
+                        process_status_params_failed=status_params_failed,
+                        form_id=form_id
                     )
                 except Exception:
                     print("Error creating citizen folder.")
@@ -94,22 +95,20 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         orchestrator_connection.log_trace("Create case.")
         try:
             case_id, case_title = jp.create_case(
-                case_handler,
-                orchestrator_connection,
-                parsed_form_data,
-                case_metadata['os2formWebformId'],
-                case_metadata['caseType'],
-                case_metadata['caseData'],
-                credentials['sql_conn_string'],
-                case_metadata['hubUpdateResponseData'],
-                case_metadata['hubUpdateProcessStatus'],
-                status_params_failed,
-                uuid,
-                case_metadata['tableName'],
-                ssn,
-                person_full_name,
-                case_folder_id,
-
+                case_handler=case_handler,
+                orchestrator_connection=orchestrator_connection,
+                parsed_form_data=parsed_form_data,
+                os2form_webform_id=case_metadata['os2formWebformId'],
+                case_type=case_metadata['caseType'],
+                case_data=case_metadata['caseData'],
+                conn_string=credentials['sql_conn_string'],
+                update_response_data=case_metadata['spUpdateResponseData'],
+                update_process_status=case_metadata['spUpdateProcessStatus'],
+                process_status_params_failed=status_params_failed,
+                form_id=form_id,
+                ssn=ssn,
+                person_full_name=person_full_name,
+                case_folder_id=case_folder_id
             )
         except Exception as e:
             message = f"Error creating case: {e}"
@@ -120,16 +119,16 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         orchestrator_connection.log_trace("Journalize files.")
         try:
             jp.journalize_file(
-                document_handler,
-                case_id,
-                case_title,
-                parsed_form_data,
-                credentials['os2_api_key'],
-                credentials['sql_conn_string'],
-                status_params_failed,
-                uuid,
-                case_metadata,
-                orchestrator_connection
+                document_handler=document_handler,
+                case_id=case_id,
+                case_title=case_title,
+                parsed_form_data=parsed_form_data,
+                os2_api_key=credentials['os2_api_key'],
+                conn_string=credentials['sql_conn_string'],
+                process_status_params_failed=status_params_failed,
+                form_id=form_id,
+                case_metadata=case_metadata,
+                orchestrator_connection=orchestrator_connection
             )
         except Exception as e:
             message = f"Error journalizing files. {e}"
@@ -137,15 +136,15 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
             notify_stakeholders(case_id, case_title, orchestrator_connection, message, None)
             continue
 
-        execute_stored_procedure(credentials['sql_conn_string'], case_metadata['hubUpdateProcessStatus'], status_params_success)
+        execute_stored_procedure(credentials['sql_conn_string'], case_metadata['spUpdateProcessStatus'], status_params_success)
 
 
-def get_status_params(uuid, case_metadata):
+def get_status_params(form_id: str):
     """
-    Generates a set of status parameters for the process, based on the given UUID and JSON arguments.
+    Generates a set of status parameters for the process, based on the given form_id and JSON arguments.
 
     Args:
-        uuid (str): The unique identifier for the current process.
+        form_id (str): The unique identifier for the current process.
         case_metadata (dict): A dictionary containing various process-related arguments, including table names.
 
     Returns:
@@ -156,34 +155,31 @@ def get_status_params(uuid, case_metadata):
     """
     status_params_inprogress = {
         "Status": ("str", "InProgress"),
-        "uuid": ("str", f'{uuid}'),
-        "TableName": ("str", f'{case_metadata["tableName"]}')
+        "form_id": ("str", f'{form_id}')
     }
     status_params_success = {
         "Status": ("str", "Successful"),
-        "uuid": ("str", f'{uuid}'),
-        "TableName": ("str", f'{case_metadata["tableName"]}')
+        "form_id": ("str", f'{form_id}')
     }
     status_params_failed = {
         "Status": ("str", "Failed"),
-        "uuid": ("str", f'{uuid}'),
-        "TableName": ("str", f'{case_metadata["tableName"]}')
+        "form_id": ("str", f'{form_id}')
     }
     return status_params_inprogress, status_params_success, status_params_failed
 
 
-def extract_ssn(case_metadata, parsed_form_data):
+def extract_ssn(os2formwebform_id, parsed_form_data):
     """
     Extracts the Social Security Number (SSN) from the parsed form data based on the provided webform ID.
 
     Args:
-        case_metadata (dict): A dictionary containing various process-related arguments, including the webform ID.
+        os2formwebform_id (str): A string containing the webform ID.
         parsed_form_data (dict): A dictionary containing the parsed form data, including potential SSN fields.
 
     Returns:
         str or None: The extracted SSN as a string with hyphens removed, or None if the SSN is not present in the form data.
     """
-    match case_metadata['os2formWebformId']:
+    match os2formwebform_id:
         case "tilmelding_til_modersmaalsunderv" | "indmeldelse_i_modtagelsesklasse" | "ansoegning_om_koersel_af_skoleel" | "ansoegning_om_midlertidig_koerse":
             if 'cpr_barnets_nummer' in parsed_form_data['data']:
                 return parsed_form_data['data']['cpr_barnets_nummer'].replace('-', '')
