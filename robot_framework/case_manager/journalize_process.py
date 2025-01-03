@@ -88,7 +88,7 @@ def get_forms_data(conn_string: str, form_type: str, params: Optional[List[Any]]
                 f.form_type = '{form_type}'
                 AND j.status IS NULL
             ORDER BY
-                f.form_submitted_date ASC        
+                f.form_submitted_date ASC
         """
         with pyodbc.connect(conn_string) as conn:
             with conn.cursor() as cursor:
