@@ -211,9 +211,9 @@ def fetch_case_metadata(connection_string, os2formwebform_id):
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT os2formWebformId, tableName, caseType, hubUpdateResponseData,
-                hubUpdateProcessStatus, caseData, documentData
-                FROM [RPA].[rpa].Journalisering_Metadata
+                SELECT os2formWebformId, caseType, spUpdateResponseData,
+                spUpdateProcessStatus, caseData, documentData
+                FROM [RPA].[journalizing].[Metadata]
                 WHERE os2formWebformId = ?;""",
                 (os2formwebform_id,)
             )
@@ -232,13 +232,10 @@ def fetch_case_metadata(connection_string, os2formwebform_id):
                     case_data_parsed = None
                     document_data_parsed = None
 
-                # Dictionary to store the row data
                 case_metadata = {
-                    'os2formWebformId': row.os2formWebformId,
-                    'tableName': row.tableName,
                     'caseType': row.caseType,
-                    'hubUpdateResponseData': row.hubUpdateResponseData,
-                    'hubUpdateProcessStatus': row.hubUpdateProcessStatus,
+                    'spUpdateResponseData': row.spUpdateResponseData,
+                    'spUpdateProcessStatus': row.spUpdateProcessStatus,
                     'caseData': case_data_parsed,
                     'documentData': document_data_parsed
                 }
@@ -293,7 +290,6 @@ def notify_stakeholders(case_id, case_title, orchestrator_connection, error_mess
             attachment_file = BytesIO(attachment_bytes)
             attachments.append(smtp_util.EmailAttachment(file=attachment_file, file_name=f"journalisering_{caseid}.pdf"))
 
-        # Send email if recipient is found
         if email_recipient is not None:
             smtp_util.send_email(
                 receiver=email_recipient,
