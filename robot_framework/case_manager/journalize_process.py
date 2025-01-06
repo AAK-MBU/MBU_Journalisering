@@ -307,7 +307,7 @@ def determine_case_title(os2form_webform_id: str, person_full_name: str, ssn: st
                 part_title = "Forældre/pårørendehenvendelse"
             elif os2form_webform_id == "respekt_for_graenser_privat":
                 part_title = "Privat skole/privat dagtilbud-henvendelse"
-            elif os2form_webform_id ==  "respekt_for_graenser":
+            elif os2form_webform_id == "respekt_for_graenser":
                 part_title = "BU-henvendelse"
 
             return f"{department} - {part_title}"
