@@ -302,7 +302,15 @@ def determine_case_title(os2form_webform_id: str, person_full_name: str, ssn: st
             else:
                 department = "Ukendt afdeling"  # Default if no match
 
-            return f"{department} - Respekt for grænser"
+            part_title = None
+            if os2form_webform_id == "indmeld_kraenkelser_af_boern":
+                part_title = "Forældre/pårørendehenvendelse"
+            elif os2form_webform_id == "respekt_for_graenser_privat":
+                part_title = "Privat skole/privat dagtilbud-henvendelse"
+            elif os2form_webform_id == "respekt_for_graenser":
+                part_title = "BU-henvendelse"
+
+            return f"{department} - {part_title}"
 
 
 def determine_case_profile_id(case_profile_name: str, orchestrator_connection) -> str:
@@ -476,7 +484,7 @@ def journalize_file(
             if not response.ok:
                 log_and_raise_error(orchestrator_connection, "An error occurred while journalizing the document.", RequestError("Request response failed."))
             orchestrator_connection.log_trace("Document was journalized.")
-            notify_stakeholders(case_id, case_title, orchestrator_connection, False, file_bytes)
+            notify_stakeholders(case_metadata['os2formWebformId'], case_id, case_title, orchestrator_connection, False, file_bytes)
 
     def handle_finalization(document_ids):
         if case_metadata['documentData'].get('finalizeDocuments') == "True":

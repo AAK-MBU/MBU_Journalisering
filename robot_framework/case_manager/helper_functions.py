@@ -233,6 +233,7 @@ def fetch_case_metadata(connection_string, os2formwebform_id):
                     document_data_parsed = None
 
                 case_metadata = {
+                    'os2formWebformId': row.os2formWebformId,
                     'caseType': row.caseType,
                     'spUpdateResponseData': row.spUpdateResponseData,
                     'spUpdateProcessStatus': row.spUpdateProcessStatus,
@@ -252,7 +253,7 @@ def fetch_case_metadata(connection_string, os2formwebform_id):
         return None
 
 
-def notify_stakeholders(case_id, case_title, orchestrator_connection, error_message, attachment_bytes):
+def notify_stakeholders(form_type, case_id, case_title, orchestrator_connection, error_message, attachment_bytes):
     """Notify stakeholders about the journalized case."""
     try:
         email_sender = orchestrator_connection.get_constant("e-mail_noreply").value
@@ -274,7 +275,7 @@ def notify_stakeholders(case_id, case_title, orchestrator_connection, error_mess
                 f"</p>"
             )
 
-        if "respekt for grænser" in casetitle.lower():
+        if form_type in ("indmeld_kraenkelser_af_boern", "respekt_for_graenser_privat", "respekt_for_graenser"):
             email_recipient = "respekt@mbu.aarhus.dk"
             email_subject = "Ny sag er blevet journaliseret: Respekt For Grænser"
             email_body = (

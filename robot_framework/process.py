@@ -114,7 +114,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         except Exception as e:
             message = f"Error creating case: {e}"
             print(message)
-            notify_stakeholders(None, None, orchestrator_connection, message, None)
+            notify_stakeholders(os2formwebform_id, None, None, orchestrator_connection, message, None)
             continue
 
         orchestrator_connection.log_trace("Journalize files.")
@@ -134,7 +134,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         except Exception as e:
             message = f"Error journalizing files. {e}"
             print(message)
-            notify_stakeholders(case_id, case_title, orchestrator_connection, message, None)
+            notify_stakeholders(os2formwebform_id, case_id, case_title, orchestrator_connection, message, None)
             continue
 
         execute_stored_procedure(credentials['sql_conn_string'], case_metadata['spUpdateProcessStatus'], status_params_success)
