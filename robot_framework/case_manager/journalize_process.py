@@ -483,7 +483,7 @@ def journalize_file(
             if not response.ok:
                 log_and_raise_error(orchestrator_connection, "An error occurred while journalizing the document.", RequestError("Request response failed."))
             orchestrator_connection.log_trace("Document was journalized.")
-            notify_stakeholders(case_id, case_title, orchestrator_connection, False, file_bytes)
+            notify_stakeholders(case_metadata['os2formWebformId'], case_id, case_title, orchestrator_connection, False, file_bytes)
 
     def handle_finalization(document_ids):
         if case_metadata['documentData'].get('finalizeDocuments') == "True":
