@@ -94,11 +94,12 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
 
         orchestrator_connection.log_trace("Create case.")
         try:
+            print("test")
             case_id, case_title = jp.create_case(
                 case_handler=case_handler,
                 orchestrator_connection=orchestrator_connection,
                 parsed_form_data=parsed_form_data,
-                os2form_webform_id=case_metadata['os2formWebformId'],
+                os2form_webform_id=os2formwebform_id,
                 case_type=case_metadata['caseType'],
                 case_data=case_metadata['caseData'],
                 conn_string=credentials['sql_conn_string'],
