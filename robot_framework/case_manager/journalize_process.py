@@ -9,7 +9,13 @@ import pyodbc
 from OpenOrchestrator.orchestrator_connection.connection import OrchestratorConnection
 from mbu_dev_shared_components.utils.db_stored_procedure_executor import execute_stored_procedure
 from mbu_dev_shared_components.os2forms.documents import download_file_bytes
-from robot_framework.case_manager.helper_functions import extract_filename_from_url, find_name_url_pairs, extract_key_value_pairs_from_json, notify_stakeholders, extract_filename_from_url_without_extension
+from robot_framework.case_manager.helper_functions import (
+    extract_filename_from_url,
+    find_name_url_pairs,
+    extract_key_value_pairs_from_json,
+    notify_stakeholders,
+    extract_filename_from_url_without_extension
+)
 
 
 class DatabaseError(Exception):
@@ -27,7 +33,8 @@ def execute_sql_update(conn_string: str, procedure_name: str, params: Dict[str, 
     Args:
         conn_string (str): Connection string for the database.
         procedure_name (str): Name of the stored procedure to execute.
-        params (Dict[str, tuple]): Parameters for the SQL procedure, in the form {param_name: (param_type, param_value)}.
+        params (Dict[str, tuple]):
+            Parameters for the SQL procedure, in the form {param_name: (param_type, param_value)}.
 
     Raises:
         DatabaseError: If the SQL procedure execution fails.
@@ -37,7 +44,11 @@ def execute_sql_update(conn_string: str, procedure_name: str, params: Dict[str, 
         raise DatabaseError(f"SQL - {procedure_name} failed.")
 
 
-def log_and_raise_error(orchestrator_connection: OrchestratorConnection, error_message: str, exception: Exception) -> None:
+def log_and_raise_error(
+        orchestrator_connection: OrchestratorConnection,
+        error_message: str,
+        exception: Exception
+        ) -> None:
     """
     Log an error and raise the specified exception.
 
@@ -254,7 +265,16 @@ def create_case_folder(
         return None
 
 
-def create_case_data(case_handler, case_type: str, case_data: Dict[str, Any], case_title: str, case_folder_id: str, received_date: str, case_profile_id, case_profile_name) -> Dict[str, Any]:
+def create_case_data(
+        case_handler,
+        case_type: str,
+        case_data: Dict[str, Any],
+        case_title: str,
+        case_folder_id: str,
+        received_date: str,
+        case_profile_id,
+        case_profile_name
+        ) -> Dict[str, Any]:
     """Create the data needed to create a new case."""
     return case_handler.create_case_data(
         case_type,
@@ -283,9 +303,9 @@ def determine_case_title(os2form_webform_id: str, person_full_name: str, ssn: st
     match os2form_webform_id:
         case "tilmelding_til_modersmaalsunderv":
             return f"Modersmålsundervisning {person_full_name}"
-        case "erklaering_af_hjemmeundervisning": #TEST webform_id. Prod id: anmeldelse_af_hjemmeundervisning
+        case "erklaering_af_hjemmeundervisning":  # TEST webform_id. Prod id: anmeldelse_af_hjemmeundervisning
             return f"Hjemmeundervisning af {person_full_name}"
-        case "aendring_af_pasningstid_i_forbin": #TEST webform_id. Prod id: pasningstid
+        case "aendring_af_pasningstid_i_forbin":  # TEST webform_id. Prod id: pasningstid
             return f"Modulændring/overflytning/indmeldelse ({person_full_name}, {ssn[:6]})"
         case "indmeldelse_i_modtagelsesklasse":
             return f"Visitering af {person_full_name} {ssn}"
@@ -325,7 +345,10 @@ def determine_case_profile_id(case_profile_name: str, orchestrator_connection) -
 
         with pyodbc.connect(conn_string) as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT case_profile_id FROM [RPA].[rpa].GO_CaseProfiles_View WHERE name like ?", case_profile_name)
+            cursor.execute(
+                "SELECT case_profile_id FROM [RPA].[rpa].GO_CaseProfiles_View WHERE name like ?",
+                case_profile_name
+            )
             row = cursor.fetchone()
             if row:
                 return row[0]
@@ -391,8 +414,22 @@ def create_case(
     """
     try:
         case_title = determine_case_title(os2form_webform_id, person_full_name, ssn, parsed_form_data)
-        case_data['caseProfileId'], case_data['caseProfileName'] = determine_case_profile(os2form_webform_id, case_data, parsed_form_data, orchestrator_connection)
-        created_case_data = create_case_data(case_handler, case_type, case_data, case_title, case_folder_id, received_date, case_data['caseProfileId'], case_data['caseProfileName'])
+        case_data['caseProfileId'], case_data['caseProfileName'] = determine_case_profile(
+            os2form_webform_id,
+            case_data,
+            parsed_form_data,
+            orchestrator_connection
+        )
+        created_case_data = create_case_data(
+            case_handler,
+            case_type,
+            case_data,
+            case_title,
+            case_folder_id,
+            received_date,
+            case_data['caseProfileId'],
+            case_data['caseProfileName']
+        )
         print(f"Created case data: {created_case_data}")
         response = case_handler.create_case(created_case_data, '/_goapi/Cases')
         if not response.ok:
@@ -416,8 +453,14 @@ def create_case(
         return None
 
     except Exception as e:
-        handle_database_error(conn_string, update_process_status, process_status_params_failed, RuntimeError(
-            f"An unexpected error occurred during case creation: {e}"))
+        handle_database_error(
+            conn_string,
+            update_process_status,
+            process_status_params_failed,
+            RuntimeError(
+                f"An unexpected error occurred during case creation: {e}"
+            )
+        )
         print(f"An error occurred: {e}")
         return None
 
@@ -456,7 +499,11 @@ def journalize_file(
 
         response = document_handler.upload_document(document_data, '/_goapi/Documents/AddToCase')
         if not response.ok:
-            log_and_raise_error(orchestrator_connection, "An error occurred when uploading the document.", RequestError("Request response failed."))
+            log_and_raise_error(
+                orchestrator_connection,
+                "An error occurred when uploading the document.",
+                RequestError("Request response failed.")
+            )
 
         document_id = response.json()["DocId"]
         orchestrator_connection.log_trace(f"Document uploaded with ID: {document_id}")
@@ -465,7 +512,9 @@ def journalize_file(
     def process_documents():
         """N/A"""
         urls = find_name_url_pairs(parsed_form_data)
-        document_category_json = extract_key_value_pairs_from_json(case_metadata['documentData'], node_name="documentCategory")
+        document_category_json = extract_key_value_pairs_from_json(
+            case_metadata['documentData'],
+            node_name="documentCategory")
         received_date = (
             parsed_form_data['entity']['completed'][0]['value']
             if case_metadata['documentData']['useCompletedDateFromFormAsDate'] == "True"
@@ -484,18 +533,35 @@ def journalize_file(
     def handle_journalization(document_ids, file_bytes):
         if case_metadata['documentData'].get('journalizeDocuments') == "True":
             orchestrator_connection.log_trace("Journalizing document.")
-            response = document_handler.journalize_document(document_ids, '/_goapi/Documents/MarkMultipleAsCaseRecord/ByDocumentId')
+            response = document_handler.journalize_document(
+                document_ids,
+                '/_goapi/Documents/MarkMultipleAsCaseRecord/ByDocumentId')
             if not response.ok:
-                log_and_raise_error(orchestrator_connection, "An error occurred while journalizing the document.", RequestError("Request response failed."))
+                log_and_raise_error(
+                    orchestrator_connection,
+                    "An error occurred while journalizing the document.",
+                    RequestError("Request response failed.")
+                )
             orchestrator_connection.log_trace("Document was journalized.")
-            notify_stakeholders(case_metadata['os2formWebformId'], case_id, case_title, orchestrator_connection, False, file_bytes)
+            notify_stakeholders(
+                case_metadata['os2formWebformId'],
+                case_id,
+                case_title,
+                orchestrator_connection,
+                False,
+                file_bytes)
 
     def handle_finalization(document_ids):
         if case_metadata['documentData'].get('finalizeDocuments') == "True":
             orchestrator_connection.log_trace("Finalizing document.")
-            response = document_handler.finalize_document(document_ids, '/_goapi/Documents/FinalizeMultiple/ByDocumentId')
+            response = document_handler.finalize_document(
+                document_ids,
+                '/_goapi/Documents/FinalizeMultiple/ByDocumentId')
             if not response.ok:
-                log_and_raise_error(orchestrator_connection, "An error occurred while finalizing the document.", RequestError("Request response failed."))
+                log_and_raise_error(
+                    orchestrator_connection,
+                    "An error occurred while finalizing the document.",
+                    RequestError("Request response failed."))
             orchestrator_connection.log_trace("Document was finalized.")
 
     try:
@@ -518,5 +584,9 @@ def journalize_file(
 
     except Exception as e:
         print(f"An unexpected error occurred during file journalization: {e}")
-        handle_database_error(conn_string, case_metadata['spUpdateProcessStatus'], process_status_params_failed, RuntimeError(
-            f"An unexpected error occurred during file journalization: {e}"))
+        handle_database_error(
+            conn_string,
+            case_metadata['spUpdateProcessStatus'],
+            process_status_params_failed,
+            RuntimeError(
+                f"An unexpected error occurred during file journalization: {e}"))
