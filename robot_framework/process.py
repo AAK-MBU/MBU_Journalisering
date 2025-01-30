@@ -195,7 +195,7 @@ def extract_ssn(os2formwebform_id, parsed_form_data):
         case "erklaering_af_hjemmeundervisning" | "aendring_af_pasningstid_i_forbin": #TEST webform_id'er. Prod id i journalize_process.py
             if parsed_form_data['data']['barnets_cpr_nummer_mitid'] != '': # Hvis cpr kommer fra MitID
                 return parsed_form_data['data']['barnets_cpr_nummer_mitid'].replace('-', '')
-            elif parsed_form_data['data']['cpr_barnets_nummer_'] != '': # Hvis cpr er indtastet manuelt
+            if parsed_form_data['data']['cpr_barnets_nummer_'] != '': # Hvis cpr er indtastet manuelt
                 return parsed_form_data['data']['cpr_barnets_nummer_'].replace('-', '')
         case _:
             return None
