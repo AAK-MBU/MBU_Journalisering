@@ -283,6 +283,10 @@ def determine_case_title(os2form_webform_id: str, person_full_name: str, ssn: st
     match os2form_webform_id:
         case "tilmelding_til_modersmaalsunderv":
             return f"Modersmålsundervisning {person_full_name}"
+        case "erklaering_af_hjemmeundervisning": #TEST webform_id. Prod id: anmeldelse_af_hjemmeundervisning
+            return f"Hjemmeundervisning af {person_full_name}"
+        case "aendring_af_pasningstid_i_forbin": #TEST webform_id. Prod id: pasningstid
+            return f"Modulændring/overflytning/indmeldelse ({person_full_name}, {ssn[:6]})"
         case "indmeldelse_i_modtagelsesklasse":
             return f"Visitering af {person_full_name} {ssn}"
         case "ansoegning_om_koersel_af_skoleel" | "ansoegning_om_midlertidig_koerse":
