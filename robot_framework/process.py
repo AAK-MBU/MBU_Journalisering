@@ -192,7 +192,7 @@ def extract_ssn(os2formwebform_id, parsed_form_data):
                 return parsed_form_data['data']['elevens_cpr_nummer'].replace('-', '')
             if 'cpr_barnet' in parsed_form_data['data']:
                 return parsed_form_data['data']['cpr_barnet'].replace('-', '')
-        case "erlaerling_af_hjemmeundervisning": #TEST webform_id. Prod id: anmeldelse_af_hjemmeundervisning
+        case "erklaering_af_hjemmeundervisning" | "aendring_af_pasningstid_i_forbin": #TEST webform_id. Prod id: anmeldelse_af_hjemmeundervisning
             if parsed_form_data['data']['barnets_cpr_nummer_mitid'] != '': # Hvis cpr kommer fra MitID
                 return parsed_form_data['data']['barnets_cpr_nummer_mitid'].replace('-', '')
             elif parsed_form_data['data']['cpr_barnets_nummer_'] != '': # Hvis cpr er indtastet manuelt
