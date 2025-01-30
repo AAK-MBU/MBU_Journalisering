@@ -24,6 +24,7 @@ jobs:
         uv pip install pylint
         uv pip install flake8
         uv pip install .
+        .venv\Scripts\activate
 
     - name: Analysing the code with pylint
       run: |
