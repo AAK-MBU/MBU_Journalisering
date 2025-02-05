@@ -92,8 +92,12 @@ class CaseHandler:
                     f'ows_Afdeling=\"{department_id};#{department_name}\" '
                     f'ows_Sagsprofil_{case_type_prefix}=\"{case_profile_id};#{case_profile_name}\" '
                     + (f'ows_CCMParentCase=\"{case_folder_id};#{case_type_prefix}\" ' if case_folder_id else '')
-                    + (f'ows_SupplerendeSagsbehandlere=\"{supplementary_case_owners}\" ' if supplementary_case_owners else '')
-                    + (f'ows_SupplerendeAfdelinger=\"{supplementary_departments}\" ' if supplementary_departments else '')
+                    + (f'ows_SupplerendeSagsbehandlere=\"{supplementary_case_owners}\" '
+                       if supplementary_case_owners
+                       else '')
+                    + (f'ows_SupplerendeAfdelinger=\"{supplementary_departments}\" '
+                       if supplementary_departments
+                       else '')
                     + (f'ows_KLENummer=\"{kle_number}\" ' if kle_number else '')
                     + (f'ows_Facet=\"{facet}\" ' if facet else '')
                     + (f'ows_Modtaget=\"{start_date}\" ' if start_date else '')
@@ -113,7 +117,11 @@ class CaseHandler:
         """
         endpoint = self._get_full_endpoint(endpoint_path)
 
-        return cases.find_case_by_case_properties(case_folder_search_data, endpoint, self.api_username, self.api_password)
+        return cases.find_case_by_case_properties(
+            case_folder_search_data,
+            endpoint,
+            self.api_username,
+            self.api_password)
 
     def create_case_folder(self, case_folder_data: str, endpoint_path: str):
         """
@@ -150,4 +158,8 @@ class CaseHandler:
         """
         endpoint = self._get_full_endpoint(endpoint_path)
 
-        return contacts.contact_lookup(person_ssn=person_ssn, api_endpoint=endpoint, api_username=self.api_username, api_password=self.api_password)
+        return contacts.contact_lookup(
+            person_ssn=person_ssn,
+            api_endpoint=endpoint,
+            api_username=self.api_username,
+            api_password=self.api_password)
