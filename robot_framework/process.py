@@ -105,8 +105,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
 
         orchestrator_connection.log_trace("Create case.")
         try:
-            print("test")
-            case_id, case_title = jp.create_case(
+            case_id, case_title, case_rel_url = jp.create_case(
                 case_handler=case_handler,
                 orchestrator_connection=orchestrator_connection,
                 parsed_form_data=parsed_form_data,
@@ -125,7 +124,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         except Exception as e:
             message = f"Error creating case: {e}"
             print(message)
-            notify_stakeholders(os2formwebform_id, None, None, orchestrator_connection, message, None)
+            notify_stakeholders(os2formwebform_id, None, None, None, orchestrator_connection, message, None)
             continue
 
         orchestrator_connection.log_trace("Journalize files.")
@@ -134,6 +133,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                 document_handler=document_handler,
                 case_id=case_id,
                 case_title=case_title,
+                case_rel_url=case_rel_url,
                 parsed_form_data=parsed_form_data,
                 os2_api_key=credentials['os2_api_key'],
                 conn_string=credentials['sql_conn_string'],
@@ -145,7 +145,14 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         except Exception as e:
             message = f"Error journalizing files. {e}"
             print(message)
-            notify_stakeholders(os2formwebform_id, case_id, case_title, orchestrator_connection, message, None)
+            notify_stakeholders(
+                form_type=os2formwebform_id,
+                case_id=case_id,
+                case_title=case_title,
+                case_rel_url=case_rel_url,
+                orchestrator_connection=orchestrator_connection,
+                error_message=message,
+                attachment_bytes=None)
             continue
 
         execute_stored_procedure(
