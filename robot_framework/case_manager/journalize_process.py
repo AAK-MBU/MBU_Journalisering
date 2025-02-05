@@ -411,7 +411,8 @@ def create_case(
     Create a new case and update the database.
 
     Returns:
-        Optional[str]: The case ID and case title if created successfully, otherwise None in case of an error.
+        Optional[str]:  The case ID, case title, and relative URL if created successfully,
+                        otherwise None in case of an error.
     """
     try:
         case_title = determine_case_title(os2form_webform_id, person_full_name, ssn, parsed_form_data)
@@ -438,6 +439,7 @@ def create_case(
             raise RequestError("Request response failed.")
 
         case_id = response.json()['CaseID']
+        case_rel_url = response.json()['CaseRelativeUrl']
 
         sql_data_params = {
             "StepName": ("str", "Case"),
@@ -446,7 +448,7 @@ def create_case(
         }
         execute_sql_update(conn_string, update_response_data, sql_data_params)
         print(f"Case created with ID: {case_id}")
-        return case_id, case_title
+        return case_id, case_title, case_rel_url
 
     except (DatabaseError, RequestError) as e:
         handle_database_error(conn_string, update_process_status, process_status_params_failed, e)
@@ -470,6 +472,7 @@ def journalize_file(
     document_handler,
     case_id: str,
     case_title,
+    case_rel_url: str,
     parsed_form_data: Dict[str, Any],
     os2_api_key: str,
     conn_string: str,
@@ -480,14 +483,14 @@ def journalize_file(
 ) -> None:
     """Journalize associated files in the 'Document' folder under the citizen case."""
 
-    def upload_single_document(url, received_date, document_category):
+    def upload_single_document(url, received_date, document_category, wait_sec=5):
         """N/A"""
         filename = extract_filename_from_url(url)
         filename_without_extension = extract_filename_from_url_without_extension(url)
         file_bytes = download_file_bytes(url, os2_api_key)
         upload_status = "failed"
         upload_attempts = 0
-        
+
         while upload_status == "failed" and upload_attempts < 5:
             document_data = document_handler.create_document_metadata(
                 case_id=case_id,
@@ -505,10 +508,13 @@ def journalize_file(
             upload_attempts += 1
             if response.ok:
                 upload_status = "succeeded"
-        
+            else:
+                time.sleep(wait_sec)
+
         attempts_string = f"{upload_attempts} attempt"
         attempts_string += "s" if upload_attempts > 1 else ""
-        
+        orchestrator_connection.log_trace(f"Uploading {filename} {upload_status} after {attempts_string}")
+
         if not response.ok:
             log_and_raise_error(
                 orchestrator_connection,
@@ -559,6 +565,7 @@ def journalize_file(
                 case_metadata['os2formWebformId'],
                 case_id,
                 case_title,
+                case_rel_url,
                 orchestrator_connection,
                 False,
                 file_bytes)

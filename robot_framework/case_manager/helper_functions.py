@@ -225,7 +225,10 @@ def fetch_case_metadata(connection_string, os2formwebform_id):
                     document_data_parsed = json.loads(row.documentData) if row.documentData else None
 
                     # Clean up the case data by removing non-breaking spaces
-                    case_data_parsed = {key: value.replace('\xa0', '') if isinstance(value, str) else value for key, value in case_data_parsed.items()}
+                    case_data_parsed = {
+                        key: value.replace('\xa0', '')
+                        if isinstance(value, str)
+                        else value for key, value in case_data_parsed.items()}
 
                 except json.JSONDecodeError as e:
                     print(f"Error parsing JSON data: {e}")
@@ -257,10 +260,10 @@ def notify_stakeholders(
         form_type,
         case_id,
         case_title,
+        case_rel_url,
         orchestrator_connection,
         error_message,
-        attachment_bytes
-    ):
+        attachment_bytes):
     """Notify stakeholders about the journalized case."""
     try:
         email_sender = orchestrator_connection.get_constant("e-mail_noreply").value
@@ -269,6 +272,10 @@ def notify_stakeholders(
         email_recipient = None
         caseid = case_id if case_id else "Ukendt"
         casetitle = case_title if case_title else "Ukendt"
+        case_url = (
+            "https://go.aarhuskommune.dk" +
+            case_rel_url
+        ) if case_rel_url else None
 
         if error_message:
             email_recipient = "rpa@mbu.aarhus.dk"
@@ -305,13 +312,16 @@ def notify_stakeholders(
                 f"<p>"
                 f"<strong>Sagsid:</strong> {caseid}<br>"
                 f"<strong>Sagstitel:</strong> {casetitle}"
+                f"<p>Link til sagen <a href={case_url}>her</a>"
                 f"</p>"
             )
 
         attachments = []
-        if attachment_bytes:
+        if attachment_bytes and form_type not in ["pasningstid", "anmeldelse_af_hjemmeundervisning"]:
             attachment_file = BytesIO(attachment_bytes)
-            attachments.append(smtp_util.EmailAttachment(file=attachment_file, file_name=f"journalisering_{caseid}.pdf"))
+            attachments.append(
+                smtp_util.EmailAttachment(file=attachment_file, file_name=f"journalisering_{caseid}.pdf")
+            )
 
         if email_recipient is not None:
             smtp_util.send_email(
