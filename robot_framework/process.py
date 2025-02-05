@@ -228,6 +228,6 @@ def extract_ssn(os2formwebform_id, parsed_form_data):
             if parsed_form_data['data']['barnets_cpr_nummer'] != '':  # Hvis cpr kommer fra MitID
                 return parsed_form_data['data']['barnets_cpr_nummer'].replace('-', '')
             if parsed_form_data['data']['cpr_barnets_nummer_'] != '':  # Hvis cpr er indtastet manuelt
-                return parsed_form_data['data']['cpr_barnets_nummer_'].replace('-', '')    
+                return parsed_form_data['data']['cpr_barnets_nummer_'].replace('-', '')
         case _:
             return None
