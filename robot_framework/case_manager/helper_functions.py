@@ -253,7 +253,14 @@ def fetch_case_metadata(connection_string, os2formwebform_id):
         return None
 
 
-def notify_stakeholders(form_type, case_id, case_title, orchestrator_connection, error_message, attachment_bytes):
+def notify_stakeholders(
+        form_type,
+        case_id,
+        case_title,
+        orchestrator_connection,
+        error_message,
+        attachment_bytes
+    ):
     """Notify stakeholders about the journalized case."""
     try:
         email_sender = orchestrator_connection.get_constant("e-mail_noreply").value
