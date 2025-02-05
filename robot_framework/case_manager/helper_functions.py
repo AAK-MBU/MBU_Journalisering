@@ -176,7 +176,7 @@ def extract_key_value_pairs_from_json(json_data, node_name=None, separator=";#",
             A dictionary with key-value pairs extracted from the string.
         """
         categories = value.split(separator)
-        return {categories[i].strip(): categories[i + 1].strip()
+        return {categories[i+1].strip(): categories[i].strip()
                 for i in range(0, len(categories) - 1, 2)}
 
     def find_and_extract_from_node(data):
@@ -286,6 +286,21 @@ def notify_stakeholders(form_type, case_id, case_title, orchestrator_connection,
                 f"</p>"
             )
 
+        if form_type in ("pasningstid", "anmeldelse_af_hjemmeundervisning"):
+            subject_dict = {
+                "pasningstid": "Ændring af pasningstid i forbindelse med barselsorlov",
+                "anmeldelse_af_hjemmeundervisning": "Erklæring af hjemmeundervisning"
+            }
+            email_recipient = "pladsanvisningen@mbu.aarhus.dk"
+            email_subject = f"Ny sag er blevet journaliseret: {subject_dict.get(form_type)}"
+            email_body = (
+                f"<p>Vi vil informere dig om, at en ny sag er blevet journaliseret.</p>"
+                f"<p>"
+                f"<strong>Sagsid:</strong> {caseid}<br>"
+                f"<strong>Sagstitel:</strong> {casetitle}"
+                f"</p>"
+            )
+
         attachments = []
         if attachment_bytes:
             attachment_file = BytesIO(attachment_bytes)
@@ -307,5 +322,5 @@ def notify_stakeholders(form_type, case_id, case_title, orchestrator_connection,
             orchestrator_connection.log_trace("Stakeholders not notified. No recipient found for notification")
 
     except Exception as e:
-        orchestrator_connection.log_trace(f"Error sending notification mail, {caseid}: {e}")
-        print(f"Error sending notification mail, {caseid}: {e}")
+        orchestrator_connection.log_trace(f"Error sending notification mail, {case_id}: {e}")
+        print(f"Error sending notification mail, {case_id}: {e}")

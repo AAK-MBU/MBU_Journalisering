@@ -3,6 +3,7 @@ This module handles the journalization process for case management.
 It contains functionality to upload and journalize documents, and manage case data.
 """
 import json
+import time
 from typing import Dict, Any, Optional, List, Tuple
 import pyodbc
 
@@ -479,25 +480,35 @@ def journalize_file(
 ) -> None:
     """Journalize associated files in the 'Document' folder under the citizen case."""
 
-    def upload_single_document(name, url, received_date, document_category):
+    def upload_single_document(url, received_date, document_category):
         """N/A"""
         filename = extract_filename_from_url(url)
         filename_without_extension = extract_filename_from_url_without_extension(url)
         file_bytes = download_file_bytes(url, os2_api_key)
-        print(name)
+        upload_status = "failed"
+        upload_attempts = 0
+        
+        while upload_status == "failed" and upload_attempts < 5:
+            document_data = document_handler.create_document_metadata(
+                case_id=case_id,
+                filename=filename,
+                data_in_bytes=list(file_bytes),
+                document_date=received_date,
+                document_title=filename_without_extension,
+                document_receiver="",
+                document_category=document_category,
+                overwrite="true"
+            )
 
-        document_data = document_handler.create_document_metadata(
-            case_id=case_id,
-            filename=filename,
-            data_in_bytes=list(file_bytes),
-            document_date=received_date,
-            document_title=filename_without_extension,
-            document_receiver="",
-            document_category=document_category,
-            overwrite="true"
-        )
+            response = document_handler.upload_document(document_data, '/_goapi/Documents/AddToCase')
 
-        response = document_handler.upload_document(document_data, '/_goapi/Documents/AddToCase')
+            upload_attempts += 1
+            if response.ok:
+                upload_status = "succeeded"
+        
+        attempts_string = f"{upload_attempts} attempt"
+        attempts_string += "s" if upload_attempts > 1 else ""
+        
         if not response.ok:
             log_and_raise_error(
                 orchestrator_connection,
@@ -509,7 +520,7 @@ def journalize_file(
         orchestrator_connection.log_trace(f"Document uploaded with ID: {document_id}")
         return {"DocumentId": str(document_id)}, document_id, file_bytes
 
-    def process_documents():
+    def process_documents(wait_sec=3):
         """N/A"""
         urls = find_name_url_pairs(parsed_form_data)
         document_category_json = extract_key_value_pairs_from_json(
@@ -524,9 +535,10 @@ def journalize_file(
         documents, document_ids = [], []
         for name, url in urls.items():
             document_category = document_category_json.get(name, 'Indgående')
-            doc, doc_id, file_bytes = upload_single_document(name, url, received_date, document_category)
+            doc, doc_id, file_bytes = upload_single_document(url, received_date, document_category)
             documents.append(doc)
             document_ids.append(doc_id)
+            time.sleep(wait_sec)
 
         return documents, document_ids, file_bytes
 
