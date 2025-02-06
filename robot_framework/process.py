@@ -18,13 +18,21 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
     oc_args_json = json.loads(orchestrator_connection.process_arguments)
     os2formwebform_id = oc_args_json['os2formWebformId']
     credentials = jp.get_credentials_and_constants(orchestrator_connection)
-    case_metadata = fetch_case_metadata(connection_string=credentials['sql_conn_string'], os2formwebform_id=os2formwebform_id)
+    case_metadata = fetch_case_metadata(
+        connection_string=credentials['sql_conn_string'],
+        os2formwebform_id=os2formwebform_id)
     forms_data = jp.get_forms_data(conn_string=credentials['sql_conn_string'], form_type=os2formwebform_id)
 
     for form in forms_data:
-        case_handler = CaseHandler(credentials['go_api_endpoint'], credentials['go_api_username'], credentials['go_api_password'])
+        case_handler = CaseHandler(
+            credentials['go_api_endpoint'],
+            credentials['go_api_username'],
+            credentials['go_api_password'])
         case_data_handler = CaseDataJson()
-        document_handler = DocumentHandler(credentials['go_api_endpoint'], credentials['go_api_username'], credentials['go_api_password'])
+        document_handler = DocumentHandler(
+            credentials['go_api_endpoint'],
+            credentials['go_api_username'],
+            credentials['go_api_password'])
 
         form_id = form['form_id']
         form_submitted_date = form['form_submitted_date']
@@ -37,7 +45,10 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         orchestrator_connection.log_trace(f"form_submitted_date: {form_submitted_date}")
 
         status_params_inprogress, status_params_success, status_params_failed = get_status_params(form_id)
-        execute_stored_procedure(credentials['sql_conn_string'], case_metadata['spUpdateProcessStatus'], status_params_inprogress)
+        execute_stored_procedure(
+            credentials['sql_conn_string'],
+            case_metadata['spUpdateProcessStatus'],
+            status_params_inprogress)
 
         if case_metadata['caseType'] == "BOR":
             orchestrator_connection.log_trace("Lookup the citizen.")
@@ -94,8 +105,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
 
         orchestrator_connection.log_trace("Create case.")
         try:
-            print("test")
-            case_id, case_title = jp.create_case(
+            case_id, case_title, case_rel_url = jp.create_case(
                 case_handler=case_handler,
                 orchestrator_connection=orchestrator_connection,
                 parsed_form_data=parsed_form_data,
@@ -114,7 +124,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         except Exception as e:
             message = f"Error creating case: {e}"
             print(message)
-            notify_stakeholders(os2formwebform_id, None, None, orchestrator_connection, message, None)
+            notify_stakeholders(case_metadata, None, None, None, orchestrator_connection, message, None)
             continue
 
         orchestrator_connection.log_trace("Journalize files.")
@@ -123,6 +133,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                 document_handler=document_handler,
                 case_id=case_id,
                 case_title=case_title,
+                case_rel_url=case_rel_url,
                 parsed_form_data=parsed_form_data,
                 os2_api_key=credentials['os2_api_key'],
                 conn_string=credentials['sql_conn_string'],
@@ -134,10 +145,20 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         except Exception as e:
             message = f"Error journalizing files. {e}"
             print(message)
-            notify_stakeholders(os2formwebform_id, case_id, case_title, orchestrator_connection, message, None)
+            notify_stakeholders(
+                case_metadata=case_metadata,
+                case_id=case_id,
+                case_title=case_title,
+                case_rel_url=case_rel_url,
+                orchestrator_connection=orchestrator_connection,
+                error_message=message,
+                attachment_bytes=None)
             continue
 
-        execute_stored_procedure(credentials['sql_conn_string'], case_metadata['spUpdateProcessStatus'], status_params_success)
+        execute_stored_procedure(
+            credentials['sql_conn_string'],
+            case_metadata['spUpdateProcessStatus'],
+            status_params_success)
 
 
 def get_status_params(form_id: str):
@@ -178,10 +199,15 @@ def extract_ssn(os2formwebform_id, parsed_form_data):
         parsed_form_data (dict): A dictionary containing the parsed form data, including potential SSN fields.
 
     Returns:
-        str or None: The extracted SSN as a string with hyphens removed, or None if the SSN is not present in the form data.
+        str or None: The extracted SSN as a string with hyphens removed,
+            or None if the SSN is not present in the form data.
     """
     match os2formwebform_id:
-        case "tilmelding_til_modersmaalsunderv" | "indmeldelse_i_modtagelsesklasse" | "ansoegning_om_koersel_af_skoleel" | "ansoegning_om_midlertidig_koerse":
+        case (
+          "tilmelding_til_modersmaalsunderv" |
+          "indmeldelse_i_modtagelsesklasse" |
+          "ansoegning_om_koersel_af_skoleel" |
+          "ansoegning_om_midlertidig_koerse"):
             if 'cpr_barnets_nummer' in parsed_form_data['data']:
                 return parsed_form_data['data']['cpr_barnets_nummer'].replace('-', '')
             if 'barnets_cpr_nummer' in parsed_form_data['data']:
@@ -192,5 +218,16 @@ def extract_ssn(os2formwebform_id, parsed_form_data):
                 return parsed_form_data['data']['elevens_cpr_nummer'].replace('-', '')
             if 'cpr_barnet' in parsed_form_data['data']:
                 return parsed_form_data['data']['cpr_barnet'].replace('-', '')
+            # TEST webform_id'er. Prod id i journalize_process.py
+        case "anmeldelse_af_hjemmeundervisning":
+            if parsed_form_data['data']['barnets_cpr_nummer_mitid'] != '':  # Hvis cpr kommer fra MitID
+                return parsed_form_data['data']['barnets_cpr_nummer_mitid'].replace('-', '')
+            if parsed_form_data['data']['cpr_barnets_nummer_'] != '':  # Hvis cpr er indtastet manuelt
+                return parsed_form_data['data']['cpr_barnets_nummer_'].replace('-', '')
+        case "pasningstid":
+            if parsed_form_data['data']['barnets_cpr_nummer'] != '':  # Hvis cpr kommer fra MitID
+                return parsed_form_data['data']['barnets_cpr_nummer'].replace('-', '')
+            if parsed_form_data['data']['cpr_barnets_nummer_'] != '':  # Hvis cpr er indtastet manuelt
+                return parsed_form_data['data']['cpr_barnets_nummer_'].replace('-', '')
         case _:
             return None

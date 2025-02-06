@@ -225,7 +225,10 @@ def fetch_case_metadata(connection_string, os2formwebform_id):
                     document_data_parsed = json.loads(row.documentData) if row.documentData else None
 
                     # Clean up the case data by removing non-breaking spaces
-                    case_data_parsed = {key: value.replace('\xa0', '') if isinstance(value, str) else value for key, value in case_data_parsed.items()}
+                    case_data_parsed = {
+                        key: value.replace('\xa0', '')
+                        if isinstance(value, str)
+                        else value for key, value in case_data_parsed.items()}
 
                 except json.JSONDecodeError as e:
                     print(f"Error parsing JSON data: {e}")
@@ -253,18 +256,30 @@ def fetch_case_metadata(connection_string, os2formwebform_id):
         return None
 
 
-def notify_stakeholders(form_type, case_id, case_title, orchestrator_connection, error_message, attachment_bytes):
+def notify_stakeholders(
+        case_metadata,
+        case_id,
+        case_title,
+        case_rel_url,
+        orchestrator_connection,
+        error_message,
+        attachment_bytes):
     """Notify stakeholders about the journalized case."""
     try:
+        form_type = case_metadata["os2formWebformId"]
         email_sender = orchestrator_connection.get_constant("e-mail_noreply").value
         email_subject = None
         email_body = None
         email_recipient = None
         caseid = case_id if case_id else "Ukendt"
         casetitle = case_title if case_title else "Ukendt"
+        case_url = (
+            "https://go.aarhuskommune.dk" +
+            case_rel_url
+        ) if case_rel_url else None
 
         if error_message:
-            email_recipient = "rpa@mbu.aarhus.dk"
+            email_recipient = orchestrator_connection.get_constant("Error Email").value
             email_subject = "Fejl ved journalisering af sag"
             email_body = (
                 f"<p>Der opstod en fejl ved journalisering af en sag.</p>"
@@ -276,7 +291,7 @@ def notify_stakeholders(form_type, case_id, case_title, orchestrator_connection,
             )
 
         if form_type in ("indmeld_kraenkelser_af_boern", "respekt_for_graenser_privat", "respekt_for_graenser"):
-            email_recipient = "respekt@mbu.aarhus.dk"
+            email_recipient = case_metadata["emailRecipient"]
             email_subject = "Ny sag er blevet journaliseret: Respekt For Grænser"
             email_body = (
                 f"<p>Vi vil informere dig om, at en ny sag er blevet journaliseret.</p>"
@@ -286,10 +301,28 @@ def notify_stakeholders(form_type, case_id, case_title, orchestrator_connection,
                 f"</p>"
             )
 
+        if form_type in ("pasningstid", "anmeldelse_af_hjemmeundervisning"):
+            subject_dict = {
+                "pasningstid": "Ændring af pasningstid i forbindelse med barselsorlov",
+                "anmeldelse_af_hjemmeundervisning": "Erklæring af hjemmeundervisning"
+            }
+            email_recipient = case_metadata["emailRecipient"]
+            email_subject = f"Ny sag er blevet journaliseret: {subject_dict.get(form_type)}"
+            email_body = (
+                f"<p>Vi vil informere dig om, at en ny sag er blevet journaliseret.</p>"
+                f"<p>"
+                f"<strong>Sagsid:</strong> {caseid}<br>"
+                f"<strong>Sagstitel:</strong> {casetitle}"
+                f"<p>Link til sagen <a href={case_url}>her</a>"
+                f"</p>"
+            )
+
         attachments = []
-        if attachment_bytes:
+        if attachment_bytes and form_type not in ["pasningstid", "anmeldelse_af_hjemmeundervisning"]:
             attachment_file = BytesIO(attachment_bytes)
-            attachments.append(smtp_util.EmailAttachment(file=attachment_file, file_name=f"journalisering_{caseid}.pdf"))
+            attachments.append(
+                smtp_util.EmailAttachment(file=attachment_file, file_name=f"journalisering_{caseid}.pdf")
+            )
 
         if email_recipient is not None:
             smtp_util.send_email(
@@ -298,8 +331,8 @@ def notify_stakeholders(form_type, case_id, case_title, orchestrator_connection,
                 subject=email_subject,
                 body=email_body,
                 html_body=email_body,
-                smtp_server="smtp.aarhuskommune.local",
-                smtp_port=25,
+                smtp_server=orchestrator_connection.get_constant("smtp_server").value,
+                smtp_port=orchestrator_connection.get_constant("smtp_port").value,
                 attachments=attachments if attachments else None
             )
             orchestrator_connection.log_trace("Notification sent to stakeholder")
@@ -307,5 +340,5 @@ def notify_stakeholders(form_type, case_id, case_title, orchestrator_connection,
             orchestrator_connection.log_trace("Stakeholders not notified. No recipient found for notification")
 
     except Exception as e:
-        orchestrator_connection.log_trace(f"Error sending notification mail, {caseid}: {e}")
-        print(f"Error sending notification mail, {caseid}: {e}")
+        orchestrator_connection.log_trace(f"Error sending notification mail, {case_id}: {e}")
+        print(f"Error sending notification mail, {case_id}: {e}")
