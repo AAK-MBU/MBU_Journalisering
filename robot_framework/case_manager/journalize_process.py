@@ -562,7 +562,7 @@ def journalize_file(
                 )
             orchestrator_connection.log_trace("Document was journalized.")
             notify_stakeholders(
-                case_metadata['os2formWebformId'],
+                case_metadata,
                 case_id,
                 case_title,
                 case_rel_url,

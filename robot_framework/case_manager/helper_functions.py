@@ -257,7 +257,7 @@ def fetch_case_metadata(connection_string, os2formwebform_id):
 
 
 def notify_stakeholders(
-        form_type,
+        case_metadata,
         case_id,
         case_title,
         case_rel_url,
@@ -266,6 +266,7 @@ def notify_stakeholders(
         attachment_bytes):
     """Notify stakeholders about the journalized case."""
     try:
+        form_type = case_metadata["os2formWebformId"]
         email_sender = orchestrator_connection.get_constant("e-mail_noreply").value
         email_subject = None
         email_body = None
@@ -278,7 +279,7 @@ def notify_stakeholders(
         ) if case_rel_url else None
 
         if error_message:
-            email_recipient = "rpa@mbu.aarhus.dk"
+            email_recipient = orchestrator_connection.get_constant("Error Email").value
             email_subject = "Fejl ved journalisering af sag"
             email_body = (
                 f"<p>Der opstod en fejl ved journalisering af en sag.</p>"
@@ -290,7 +291,7 @@ def notify_stakeholders(
             )
 
         if form_type in ("indmeld_kraenkelser_af_boern", "respekt_for_graenser_privat", "respekt_for_graenser"):
-            email_recipient = "respekt@mbu.aarhus.dk"
+            email_recipient = case_metadata["emailRecipient"]
             email_subject = "Ny sag er blevet journaliseret: Respekt For Grænser"
             email_body = (
                 f"<p>Vi vil informere dig om, at en ny sag er blevet journaliseret.</p>"
@@ -305,7 +306,7 @@ def notify_stakeholders(
                 "pasningstid": "Ændring af pasningstid i forbindelse med barselsorlov",
                 "anmeldelse_af_hjemmeundervisning": "Erklæring af hjemmeundervisning"
             }
-            email_recipient = "pladsanvisningen@mbu.aarhus.dk"
+            email_recipient = case_metadata["emailRecipient"]
             email_subject = f"Ny sag er blevet journaliseret: {subject_dict.get(form_type)}"
             email_body = (
                 f"<p>Vi vil informere dig om, at en ny sag er blevet journaliseret.</p>"
@@ -330,8 +331,8 @@ def notify_stakeholders(
                 subject=email_subject,
                 body=email_body,
                 html_body=email_body,
-                smtp_server="smtp.aarhuskommune.local",
-                smtp_port=25,
+                smtp_server=orchestrator_connection.get_constant("smtp_server").value,
+                smtp_port=orchestrator_connection.get_constant("smtp_port").value,
                 attachments=attachments if attachments else None
             )
             orchestrator_connection.log_trace("Notification sent to stakeholder")

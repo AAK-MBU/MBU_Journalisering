@@ -124,7 +124,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         except Exception as e:
             message = f"Error creating case: {e}"
             print(message)
-            notify_stakeholders(os2formwebform_id, None, None, None, orchestrator_connection, message, None)
+            notify_stakeholders(case_metadata, None, None, None, orchestrator_connection, message, None)
             continue
 
         orchestrator_connection.log_trace("Journalize files.")
@@ -146,7 +146,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
             message = f"Error journalizing files. {e}"
             print(message)
             notify_stakeholders(
-                form_type=os2formwebform_id,
+                case_metadata=case_metadata,
                 case_id=case_id,
                 case_title=case_title,
                 case_rel_url=case_rel_url,
