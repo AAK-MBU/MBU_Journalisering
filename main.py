@@ -12,7 +12,7 @@ script_directory = os.path.dirname(os.path.realpath(__file__))
 os.chdir(script_directory)
 
 try:
-    import uv
+    import uv  # pylint: disable=unused-import
 except ImportError:
     subprocess.run([sys.executable, "-m", "pip", "install", "uv"], check=True)
 
