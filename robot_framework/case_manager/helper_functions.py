@@ -291,7 +291,7 @@ def notify_stakeholders(
             )
 
         if form_type in ("indmeld_kraenkelser_af_boern", "respekt_for_graenser_privat", "respekt_for_graenser"):
-            email_recipient = case_metadata["emailRecipient"]
+            email_recipient = case_metadata["caseData"]["emailRecipient"]
             email_subject = "Ny sag er blevet journaliseret: Respekt For Grænser"
             email_body = (
                 f"<p>Vi vil informere dig om, at en ny sag er blevet journaliseret.</p>"
@@ -306,7 +306,7 @@ def notify_stakeholders(
                 "pasningstid": "Ændring af pasningstid i forbindelse med barselsorlov",
                 "anmeldelse_af_hjemmeundervisning": "Erklæring af hjemmeundervisning"
             }
-            email_recipient = case_metadata["emailRecipient"]
+            email_recipient = case_metadata["caseData"]["emailRecipient"]
             email_subject = f"Ny sag er blevet journaliseret: {subject_dict.get(form_type)}"
             email_body = (
                 f"<p>Vi vil informere dig om, at en ny sag er blevet journaliseret.</p>"
