@@ -5,19 +5,32 @@ a virtual environment and then start the actual process.
 import subprocess
 import os
 import sys
+import secrets
+
 
 script_directory = os.path.dirname(os.path.realpath(__file__))
 os.chdir(script_directory)
 
-# Install uv
-subprocess.run([sys.executable, "-m", "pip", "install", "uv"], check=True)
+try:
+    import uv
+except ImportError:
+    subprocess.run([sys.executable, "-m", "pip", "install", "uv"], check=True)
 
-# Create virtual environment
-subprocess.run(["uv", "venv"], check=True)
+unique_id = secrets.token_hex(8)
+venv_name = f".venv_{unique_id}"
 
-# Install packages in the virtual environment
-subprocess.run(["uv", "pip", "install", "."], check=True)
+subprocess.run(["uv", "venv", venv_name], check=True)
 
-command_args = [r".venv\Scripts\python", "-m", "robot_framework"] + sys.argv[1:]
+cache_dir = os.path.join(script_directory, "pip_cache")
+os.makedirs(cache_dir, exist_ok=True)
 
+subprocess.run([
+    "uv",
+    "--venv", venv_name,
+    "pip", "install", ".",
+    "--cache-dir", cache_dir
+], check=True)
+
+python_exe = os.path.join(script_directory, venv_name, "Scripts", "python")
+command_args = [python_exe, "-m", "robot_framework"] + sys.argv[1:]
 subprocess.run(command_args, check=True)
