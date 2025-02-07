@@ -21,7 +21,3 @@ subprocess.run(["uv", "pip", "install", "."], check=True)
 command_args = [r".venv\Scripts\python", "-m", "robot_framework"] + sys.argv[1:]
 
 subprocess.run(command_args, check=True)
-
-python_exe = os.path.join(script_directory, VENV_NAME, "Scripts", "python")
-command_args = [python_exe, "-m", "robot_framework"] + sys.argv[1:]
-subprocess.run(command_args, check=True)
