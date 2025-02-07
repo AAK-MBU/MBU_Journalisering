@@ -49,7 +49,7 @@ except subprocess.CalledProcessError as e:
     logger.error("Failed to install packages: %s", e)
     sys.exit(1)
 except subprocess.TimeoutExpired as e:
-    logger.error("Package installation timed out.")
+    logger.error("Package installation timed out %s", e")
     sys.exit(1)
 
 # Run the main process
