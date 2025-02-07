@@ -7,18 +7,22 @@ import os
 import sys
 import pathlib
 
+
 # Check if virtual environment already exists to avoid re-creation
 script_directory = os.path.dirname(os.path.realpath(__file__))
 os.chdir(script_directory)
 
 venv_dir = os.path.join(script_directory, ".venv")
 
+
 # Install 'uv' if not already installed (avoid redundant installation)
 def install_uv():
+    """Install 'uv' if not already installed (avoid redundant installation)."""
     try:
         subprocess.run([sys.executable, "-m", "uv", "--version"], check=True, capture_output=True)
     except subprocess.CalledProcessError:
         subprocess.run([sys.executable, "-m", "pip", "install", "uv"], check=True)
+
 
 # Create virtual environment only if it doesn't exist
 if not os.path.exists(venv_dir):
