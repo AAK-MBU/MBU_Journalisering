@@ -16,7 +16,7 @@ subprocess.run([sys.executable, "-m", "pip", "install", "uv"], check=True)
 subprocess.run(["uv", "venv"], check=True)
 
 # Install packages in the virtual environment
-subprocess.run(["uv", "pip", "install", "."], check=True, timeout=300)
+subprocess.run(["uv", "pip", "install", "."], check=True, timeout=120)
 
 command_args = [r".venv\Scripts\python", "-m", "robot_framework"] + sys.argv[1:]
 
