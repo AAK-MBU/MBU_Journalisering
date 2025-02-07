@@ -15,6 +15,7 @@ venv_dir = os.path.join(script_directory, ".venv")
 
 # Install 'uv' if not already installed (avoid redundant installation)
 def install_uv():
+    """Install 'uv' if not already installed (avoid redundant installation)."""
     try:
         subprocess.run([sys.executable, "-m", "uv", "--version"], check=True, capture_output=True)
     except subprocess.CalledProcessError:
