@@ -17,20 +17,20 @@ except ImportError:
     subprocess.run([sys.executable, "-m", "pip", "install", "uv"], check=True)
 
 unique_id = secrets.token_hex(8)
-venv_name = f".venv_{unique_id}"
+VENV_NAME = f".venv_{unique_id}"
 
-subprocess.run(["uv", "venv", venv_name], check=True)
+subprocess.run(["uv", "venv", VENV_NAME], check=True)
 
 cache_dir = os.path.join(script_directory, "pip_cache")
 os.makedirs(cache_dir, exist_ok=True)
 
 subprocess.run([
     "uv",
-    "--venv", venv_name,
+    "--venv", VENV_NAME,
     "pip", "install", ".",
     "--cache-dir", cache_dir
 ], check=True)
 
-python_exe = os.path.join(script_directory, venv_name, "Scripts", "python")
+python_exe = os.path.join(script_directory, VENV_NAME, "Scripts", "python")
 command_args = [python_exe, "-m", "robot_framework"] + sys.argv[1:]
 subprocess.run(command_args, check=True)
