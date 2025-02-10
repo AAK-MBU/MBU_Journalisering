@@ -20,7 +20,7 @@ dependencies = [
     "Pillow == 11.1.0",
     "MBU-dev-shared-components >= 0.0.50",
     "itk-dev-shared-components == 2.8.*",
-    "fcntl"
+    "portalocker"
 ]
 
 [project.optional-dependencies]
