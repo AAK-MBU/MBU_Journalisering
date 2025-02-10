@@ -19,7 +19,8 @@ dependencies = [
     "OpenOrchestrator == 1.*",
     "Pillow == 11.1.0",
     "MBU-dev-shared-components >= 0.0.50",
-    "itk-dev-shared-components == 2.8.*"
+    "itk-dev-shared-components == 2.8.*",
+    "fcntl"
 ]
 
 [project.optional-dependencies]
