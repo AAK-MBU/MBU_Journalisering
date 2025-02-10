@@ -6,7 +6,7 @@ import subprocess
 import os
 import sys
 import pathlib
-import fcntl
+import portalocker
 
 
 # Check if virtual environment already exists to avoid re-creation
@@ -37,13 +37,13 @@ if not os.path.exists(venv_dir):
 try:
     packages_file = pathlib.Path(script_directory) / ".venv_installed_marker"
     if not packages_file.exists():
-        with open(lock_file_path, "w") as lock_file:
-            fcntl.flock(lock_file, fcntl.LOCK_EX)
+        with open(lock_file_path, "w", encoding="utf-8") as lock_file:
+            portalocker.lock(lock_file, portalocker.LOCK_EX)
             try:
                 subprocess.run(["uv", "pip", "install", "."], check=True, timeout=120)
                 packages_file.touch()
             finally:
-                fcntl.flock(lock_file, fcntl.LOCK_UN)
+                portalocker.unlock(lock_file)
 except subprocess.CalledProcessError as e:
     print(f"Package installation failed: {e}", file=sys.stderr)
     sys.exit(1)
