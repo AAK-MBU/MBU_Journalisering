@@ -290,7 +290,7 @@ def notify_stakeholders(
                 f"</p>"
             )
 
-        if form_type in ("indmeld_kraenkelser_af_boern", "respekt_for_graenser_privat", "respekt_for_graenser"):
+        elif form_type in ("indmeld_kraenkelser_af_boern", "respekt_for_graenser_privat", "respekt_for_graenser"):
             email_recipient = case_metadata["caseData"]["emailRecipient"]
             email_subject = "Ny sag er blevet journaliseret: Respekt For Grænser"
             email_body = (
@@ -301,7 +301,7 @@ def notify_stakeholders(
                 f"</p>"
             )
 
-        if form_type in ("pasningstid", "anmeldelse_af_hjemmeundervisning"):
+        elif form_type in ("pasningstid", "anmeldelse_af_hjemmeundervisning"):
             subject_dict = {
                 "pasningstid": "Ændring af pasningstid i forbindelse med barselsorlov",
                 "anmeldelse_af_hjemmeundervisning": "Erklæring af hjemmeundervisning"
@@ -335,7 +335,10 @@ def notify_stakeholders(
                 smtp_port=orchestrator_connection.get_constant("smtp_port").value,
                 attachments=attachments if attachments else None
             )
-            orchestrator_connection.log_trace("Notification sent to stakeholder")
+            if error_message:
+                orchestrator_connection.log_trace("Error email sent")
+            else:
+                orchestrator_connection.log_trace("Notification sent to stakeholder")
         else:
             orchestrator_connection.log_trace("Stakeholders not notified. No recipient found for notification")
 
