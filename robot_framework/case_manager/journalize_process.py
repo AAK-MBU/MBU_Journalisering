@@ -453,7 +453,7 @@ def create_case(
     except (DatabaseError, RequestError) as e:
         handle_database_error(conn_string, update_process_status, process_status_params_failed, e)
         print(f"An error occurred: {e}")
-        return None
+        raise e
 
     except Exception as e:
         handle_database_error(
@@ -465,7 +465,7 @@ def create_case(
             )
         )
         print(f"An error occurred: {e}")
-        return None
+        raise e
 
 
 def journalize_file(
