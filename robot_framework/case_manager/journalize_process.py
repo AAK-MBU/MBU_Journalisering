@@ -414,7 +414,7 @@ def create_case(
                         otherwise None in case of an error.
     """
     try:
-        case_title = determine_case_title(os2form_webform_id, person_full_name, ssn, parsed_form_data, case_data["meta_case_title"])
+        case_title = determine_case_title(os2form_webform_id, person_full_name, ssn, parsed_form_data, case_data["meta_case_title"]) # meta_case_title needs to be in original case_metadata
         case_data['caseProfileId'], case_data['caseProfileName'] = determine_case_profile(
             os2form_webform_id,
             case_data,
