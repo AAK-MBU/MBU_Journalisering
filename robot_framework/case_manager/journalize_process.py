@@ -49,7 +49,7 @@ def log_and_raise_error(
         orchestrator_connection: OrchestratorConnection,
         error_message: str,
         exception: Exception
-        ) -> None:
+) -> None:
     """
     Log an error and raise the specified exception.
 
@@ -275,7 +275,7 @@ def create_case_data(
         received_date: str,
         case_profile_id,
         case_profile_name
-        ) -> Dict[str, Any]:
+) -> Dict[str, Any]:
     """Create the data needed to create a new case."""
     return case_handler.create_case_data(
         case_type,
