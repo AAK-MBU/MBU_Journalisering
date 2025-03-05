@@ -301,7 +301,7 @@ def create_case_data(
 
 def determine_case_title(os2form_webform_id: str, person_full_name: str, ssn: str, parsed_form_data, meta_case_title) -> str:
     """Determine the title of the case based on the webform ID."""
-    
+
     if os2form_webform_id not in ("indmeld_kraenkelser_af_boern", "respekt_for_graenser_privat", "respekt_for_graenser"):
         placeholder_replacements = [
             ("placeholder_ssn_first_6", ssn[:6]),
@@ -314,28 +314,27 @@ def determine_case_title(os2form_webform_id: str, person_full_name: str, ssn: st
 
         return meta_case_title
 
+    omraade = parsed_form_data['data']['omraade']
+    if omraade == "Skole":
+        department = parsed_form_data['data'].get('skole', "Ukendt skole")
+    elif omraade == "Dagtilbud":
+        department = parsed_form_data['data'].get('dagtilbud')
+        if not department:
+            department = parsed_form_data['data'].get('daginstitution_udv_', "Ukendt dagtilbud")
+    elif omraade == "Ungdomsskole":
+        department = parsed_form_data['data'].get('ungdomsskole', "Ukendt ungdomsskole")
+    elif omraade == "Klub":
+        department = parsed_form_data['data'].get('klub', "Ukendt klub")
     else:
-        omraade = parsed_form_data['data']['omraade']
-        if omraade == "Skole":
-            department = parsed_form_data['data'].get('skole', "Ukendt skole")
-        elif omraade == "Dagtilbud":
-            department = parsed_form_data['data'].get('dagtilbud')
-            if not department:
-                department = parsed_form_data['data'].get('daginstitution_udv_', "Ukendt dagtilbud")
-        elif omraade == "Ungdomsskole":
-            department = parsed_form_data['data'].get('ungdomsskole', "Ukendt ungdomsskole")
-        elif omraade == "Klub":
-            department = parsed_form_data['data'].get('klub', "Ukendt klub")
-        else:
-            department = "Ukendt afdeling"  # Default if no match
-        part_title = None
-        if os2form_webform_id == "indmeld_kraenkelser_af_boern":
-            part_title = "Forældre/pårørendehenvendelse"
-        elif os2form_webform_id == "respekt_for_graenser_privat":
-            part_title = "Privat skole/privat dagtilbud-henvendelse"
-        elif os2form_webform_id == "respekt_for_graenser":
-            part_title = "BU-henvendelse"
-        return f"{department} - {part_title}"
+        department = "Ukendt afdeling"  # Default if no match
+    part_title = None
+    if os2form_webform_id == "indmeld_kraenkelser_af_boern":
+        part_title = "Forældre/pårørendehenvendelse"
+    elif os2form_webform_id == "respekt_for_graenser_privat":
+        part_title = "Privat skole/privat dagtilbud-henvendelse"
+    elif os2form_webform_id == "respekt_for_graenser":
+        part_title = "BU-henvendelse"
+    return f"{department} - {part_title}"
 
 
 def determine_case_profile_id(case_profile_name: str, orchestrator_connection) -> str:
