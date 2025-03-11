@@ -46,9 +46,9 @@ def execute_sql_update(conn_string: str, procedure_name: str, params: Dict[str, 
 
 
 def log_and_raise_error(
-        orchestrator_connection: OrchestratorConnection,
-        error_message: str,
-        exception: Exception
+    orchestrator_connection: OrchestratorConnection,
+    error_message: str,
+    exception: Exception
 ) -> None:
     """
     Log an error and raise the specified exception.
@@ -267,14 +267,14 @@ def create_case_folder(
 
 
 def create_case_data(
-        case_handler,
-        case_type: str,
-        case_data: Dict[str, Any],
-        case_title: str,
-        case_folder_id: str,
-        received_date: str,
-        case_profile_id,
-        case_profile_name
+    case_handler,
+    case_type: str,
+    case_data: Dict[str, Any],
+    case_title: str,
+    case_folder_id: str,
+    received_date: str,
+    case_profile_id,
+    case_profile_name
 ) -> Dict[str, Any]:
     """Create the data needed to create a new case."""
     return case_handler.create_case_data(
@@ -299,42 +299,43 @@ def create_case_data(
     )
 
 
-def determine_case_title(os2form_webform_id: str, person_full_name: str, ssn: str, parsed_form_data, meta_case_title) -> str:
+def determine_case_title(os2form_webform_id: str, person_full_name: str, ssn: str, parsed_form_data) -> str:
     """Determine the title of the case based on the webform ID."""
+    match os2form_webform_id:
+        case "tilmelding_til_modersmaalsunderv":
+            return f"Modersmålsundervisning {person_full_name}"
+        case "anmeldelse_af_hjemmeundervisning":
+            return f"Hjemmeundervisning af {person_full_name}"
+        case "pasningstid":
+            return f"Modulændring/overflytning/indmeldelse ({person_full_name}, {ssn[:6]})"
+        case "indmeldelse_i_modtagelsesklasse":
+            return f"Visitering af {person_full_name} {ssn}"
+        case "ansoegning_om_koersel_af_skoleel" | "ansoegning_om_midlertidig_koerse":
+            return f"Kørsel til {person_full_name}"
+        case "indmeld_kraenkelser_af_boern" | "respekt_for_graenser_privat" | "respekt_for_graenser":
+            omraade = parsed_form_data['data']['omraade']
+            if omraade == "Skole":
+                department = parsed_form_data['data'].get('skole', "Ukendt skole")
+            elif omraade == "Dagtilbud":
+                department = parsed_form_data['data'].get('dagtilbud')
+                if not department:
+                    department = parsed_form_data['data'].get('daginstitution_udv_', "Ukendt dagtilbud")
+            elif omraade == "Ungdomsskole":
+                department = parsed_form_data['data'].get('ungdomsskole', "Ukendt ungdomsskole")
+            elif omraade == "Klub":
+                department = parsed_form_data['data'].get('klub', "Ukendt klub")
+            else:
+                department = "Ukendt afdeling"  # Default if no match
 
-    if os2form_webform_id not in ("indmeld_kraenkelser_af_boern", "respekt_for_graenser_privat", "respekt_for_graenser"):
-        placeholder_replacements = [
-            ("placeholder_ssn_first_6", ssn[:6]),
-            ("placeholder_ssn", ssn),
-            ("placeholder_person_full_name", person_full_name)
-        ]
+            part_title = None
+            if os2form_webform_id == "indmeld_kraenkelser_af_boern":
+                part_title = "Forældre/pårørendehenvendelse"
+            elif os2form_webform_id == "respekt_for_graenser_privat":
+                part_title = "Privat skole/privat dagtilbud-henvendelse"
+            elif os2form_webform_id == "respekt_for_graenser":
+                part_title = "BU-henvendelse"
 
-        for placeholder, value in placeholder_replacements:
-            meta_case_title = meta_case_title.replace(placeholder, value)
-
-        return meta_case_title
-
-    omraade = parsed_form_data['data']['omraade']
-    if omraade == "Skole":
-        department = parsed_form_data['data'].get('skole', "Ukendt skole")
-    elif omraade == "Dagtilbud":
-        department = parsed_form_data['data'].get('dagtilbud')
-        if not department:
-            department = parsed_form_data['data'].get('daginstitution_udv_', "Ukendt dagtilbud")
-    elif omraade == "Ungdomsskole":
-        department = parsed_form_data['data'].get('ungdomsskole', "Ukendt ungdomsskole")
-    elif omraade == "Klub":
-        department = parsed_form_data['data'].get('klub', "Ukendt klub")
-    else:
-        department = "Ukendt afdeling"  # Default if no match
-    part_title = None
-    if os2form_webform_id == "indmeld_kraenkelser_af_boern":
-        part_title = "Forældre/pårørendehenvendelse"
-    elif os2form_webform_id == "respekt_for_graenser_privat":
-        part_title = "Privat skole/privat dagtilbud-henvendelse"
-    elif os2form_webform_id == "respekt_for_graenser":
-        part_title = "BU-henvendelse"
-    return f"{department} - {part_title}"
+            return f"{department} - {part_title}"
 
 
 def determine_case_profile_id(case_profile_name: str, orchestrator_connection) -> str:
@@ -414,7 +415,7 @@ def create_case(
                         otherwise None in case of an error.
     """
     try:
-        case_title = determine_case_title(os2form_webform_id, person_full_name, ssn, parsed_form_data, case_data["meta_case_title"])  # meta_case_title needs to be in original case_metadata
+        case_title = determine_case_title(os2form_webform_id, person_full_name, ssn, parsed_form_data)
         case_data['caseProfileId'], case_data['caseProfileName'] = determine_case_profile(
             os2form_webform_id,
             case_data,
