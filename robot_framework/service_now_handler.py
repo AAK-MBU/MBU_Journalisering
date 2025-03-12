@@ -38,12 +38,14 @@ def post_incident(service_now_api_username, service_now_api_password, error_dict
         "Accept": "application/json"
     }
 
+    # pylint: disable=missing-timeout
     response = requests.post(url, json=incident_data, headers=headers, auth=(service_now_api_username, service_now_api_password))
 
     print()
     print("Response Status Code:", response.status_code)
     print("Response Text:", response.text)
 
+    # pylint: disable=no-else-return
     if response.status_code == 200:
         return response.json().get("result", {})
 
