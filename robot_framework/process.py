@@ -62,8 +62,18 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                     process_status_params_failed=status_params_failed,
                     form_id=form_id
                 )
-            except Exception:
-                print("Error looking up the citizen.")
+            except Exception as e:
+                message = "Error looking up the citizen"
+                orchestrator_connection.log_trace(message)
+                notify_stakeholders(
+                    case_metadata,
+                    None,
+                    None,
+                    None,
+                    orchestrator_connection,
+                    f"{message}: {e}",
+                    None,
+                )
                 continue
 
             orchestrator_connection.log_trace("Check for existing citizen folder.")
@@ -81,7 +91,18 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                     process_status_params_failed=status_params_failed,
                     form_id=form_id
                 )
-            except Exception:
+            except Exception as e:
+                message = "Error checking for existing citizen folder."
+                orchestrator_connection.log_trace(message)
+                notify_stakeholders(
+                    case_metadata,
+                    None,
+                    None,
+                    None,
+                    orchestrator_connection,
+                    f"{message}: {e}",
+                    None,
+                )
                 continue
 
             if not case_folder_id:
@@ -99,9 +120,19 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                         process_status_params_failed=status_params_failed,
                         form_id=form_id
                     )
-                except Exception:
-                    print("Error creating citizen folder.")
-                    continue
+                except Exception as e:
+                    message = "Error creating citizen folder."
+                    orchestrator_connection.log_trace(message)
+                    notify_stakeholders(
+                        case_metadata,
+                        None,
+                        None,
+                        None,
+                        orchestrator_connection,
+                        f"{message}: {e}",
+                        None,
+                    )
+                continue
 
         orchestrator_connection.log_trace("Create case.")
         try:
@@ -204,21 +235,26 @@ def extract_ssn(os2formwebform_id, parsed_form_data):
     """
     match os2formwebform_id:
         case (
-          "tilmelding_til_modersmaalsunderv" |
-          "indmeldelse_i_modtagelsesklasse" |
-          "ansoegning_om_koersel_af_skoleel" |
-          "ansoegning_om_midlertidig_koerse"):
-            if 'cpr_barnets_nummer' in parsed_form_data['data']:
-                return parsed_form_data['data']['cpr_barnets_nummer'].replace('-', '')
-            if 'barnets_cpr_nummer' in parsed_form_data['data']:
-                return parsed_form_data['data']['barnets_cpr_nummer'].replace('-', '')
-            if 'cpr_elevens_nummer' in parsed_form_data['data']:
-                return parsed_form_data['data']['cpr_elevens_nummer'].replace('-', '')
-            if 'elevens_cpr_nummer' in parsed_form_data['data']:
-                return parsed_form_data['data']['elevens_cpr_nummer'].replace('-', '')
-            if 'cpr_barnet' in parsed_form_data['data']:
-                return parsed_form_data['data']['cpr_barnet'].replace('-', '')
+            "indmeldelse_i_modtagelsesklasse"
+            | "ansoegning_om_koersel_af_skoleel"
+            | "ansoegning_om_midlertidig_koerse"
+        ):
+            if "cpr_barnets_nummer" in parsed_form_data["data"]:
+                return parsed_form_data["data"]["cpr_barnets_nummer"].replace("-", "")
+            if "barnets_cpr_nummer" in parsed_form_data["data"]:
+                return parsed_form_data["data"]["barnets_cpr_nummer"].replace("-", "")
+            if "cpr_elevens_nummer" in parsed_form_data["data"]:
+                return parsed_form_data["data"]["cpr_elevens_nummer"].replace("-", "")
+            if "elevens_cpr_nummer" in parsed_form_data["data"]:
+                return parsed_form_data["data"]["elevens_cpr_nummer"].replace("-", "")
+            if "cpr_barnet" in parsed_form_data["data"]:
+                return parsed_form_data["data"]["cpr_barnet"].replace("-", "")
             # TEST webform_id'er. Prod id i journalize_process.py
+        case "tilmelding_til_modersmaalsunderv":
+            if parsed_form_data['data']['elevens_cpr_nummer_mitid'] != '':  # Hvis cpr kommer fra MitID
+                return parsed_form_data['data']['elevens_cpr_nummer_mitid'].replace('-', '')
+            if parsed_form_data['data']['elevens_cpr_nummer'] != '':  # Hvis cpr er indtastet manuelt
+                return parsed_form_data["data"]["elevens_cpr_nummer"].replace("-", "")
         case "anmeldelse_af_hjemmeundervisning":
             if parsed_form_data['data']['barnets_cpr_nummer_mitid'] != '':  # Hvis cpr kommer fra MitID
                 return parsed_form_data['data']['barnets_cpr_nummer_mitid'].replace('-', '')
