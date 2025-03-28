@@ -7,4 +7,6 @@ disable =
   W0718, # Catching too general exception Exception (broad-exception-caught)
   R0917, # Too many positional arguments
   R0915, # Too many statements
-  R0912 # Too many branches
+  R0911, # Too many return statements
+  R0912, # Too many branches
+  W0611 # Unused import
