@@ -266,6 +266,7 @@ def notify_stakeholders(
         attachment_bytes):
     """Notify stakeholders about the journalized case."""
     try:
+        orchestrator_connection.log_trace("Notifying stakeholders about the journalized case")
         form_type = case_metadata["os2formWebformId"]
         email_sender = orchestrator_connection.get_constant("e-mail_noreply").value
         email_subject = None
@@ -284,6 +285,7 @@ def notify_stakeholders(
             email_body = (
                 f"<p>Der opstod en fejl ved journalisering af en sag.</p>"
                 f"<p>"
+                f"<strong>Form type:</strong> {form_type}"
                 f"<strong>Sagsid:</strong> {caseid}<br>"
                 f"<strong>Sagstitel:</strong> {casetitle}<br>"
                 f"<strong>Fejlbesked:</strong> {error_message}"
@@ -291,7 +293,7 @@ def notify_stakeholders(
             )
 
         elif form_type in ("indmeld_kraenkelser_af_boern", "respekt_for_graenser_privat", "respekt_for_graenser"):
-            email_recipient = case_metadata["caseData"]["emailRecipient"]
+            email_recipient = case_metadata.get("caseData", {}).get("emailRecipient")
             email_subject = "Ny sag er blevet journaliseret: Respekt For Grænser"
             email_body = (
                 f"<p>Vi vil informere dig om, at en ny sag er blevet journaliseret.</p>"
@@ -306,7 +308,7 @@ def notify_stakeholders(
                 "pasningstid": "Ændring af pasningstid i forbindelse med barselsorlov",
                 "anmeldelse_af_hjemmeundervisning": "Erklæring af hjemmeundervisning"
             }
-            email_recipient = case_metadata["caseData"]["emailRecipient"]
+            email_recipient = case_metadata.get("caseData", {}).get("emailRecipient")
             email_subject = f"Ny sag er blevet journaliseret: {subject_dict.get(form_type)}"
             email_body = (
                 f"<p>Vi vil informere dig om, at en ny sag er blevet journaliseret.</p>"
@@ -325,6 +327,7 @@ def notify_stakeholders(
             )
 
         if email_recipient is not None:
+            orchestrator_connection.log_trace("Sending email to stakeholder")
             smtp_util.send_email(
                 receiver=email_recipient,
                 sender=email_sender,

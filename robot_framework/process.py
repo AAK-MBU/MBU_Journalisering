@@ -62,6 +62,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                     process_status_params_failed=status_params_failed,
                     form_id=form_id
                 )
+                orchestrator_connection.log_trace("Citizen lookup successful.")
             except Exception as e:
                 message = "Error looking up the citizen"
                 orchestrator_connection.log_trace(message)
@@ -91,6 +92,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                     process_status_params_failed=status_params_failed,
                     form_id=form_id
                 )
+                orchestrator_connection.log_trace("Citizen folder check successful.")
             except Exception as e:
                 message = "Error checking for existing citizen folder."
                 orchestrator_connection.log_trace(message)
@@ -120,6 +122,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                         process_status_params_failed=status_params_failed,
                         form_id=form_id
                     )
+                    orchestrator_connection.log_trace("Citizen folder creation successful.")
                 except Exception as e:
                     message = "Error creating citizen folder."
                     orchestrator_connection.log_trace(message)
@@ -132,7 +135,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                         f"{message}: {e}",
                         None,
                     )
-                continue
+                    continue
 
         orchestrator_connection.log_trace("Create case.")
         try:
@@ -152,6 +155,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                 person_full_name=person_full_name,
                 case_folder_id=case_folder_id
             )
+            orchestrator_connection.log_trace("Case creation successful.")
         except Exception as e:
             message = f"Error creating case: {e}"
             print(message)
@@ -173,6 +177,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                 case_metadata=case_metadata,
                 orchestrator_connection=orchestrator_connection
             )
+            orchestrator_connection.log_trace("Journalization successful.")
         except Exception as e:
             message = f"Error journalizing files. {e}"
             print(message)
