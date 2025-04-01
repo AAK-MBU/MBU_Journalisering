@@ -276,7 +276,7 @@ def notify_stakeholders(
         caseid = case_id if case_id else "Ukendt"
         casetitle = case_title if case_title else "Ukendt"
         case_url = (
-            "https://go.aarhuskommune.dk" + 
+            "https://go.aarhuskommune.dk" +
             case_rel_url
         ) if case_rel_url else None
 
