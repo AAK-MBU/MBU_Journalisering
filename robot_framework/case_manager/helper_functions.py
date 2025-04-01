@@ -211,7 +211,7 @@ def fetch_case_metadata(connection_string, os2formwebform_id):
             cursor = conn.cursor()
             cursor.execute(
                 """
-                SELECT os2formWebformId, caseType, spUpdateResponseData,
+                SELECT os2formWebformId, description, caseType, spUpdateResponseData,
                 spUpdateProcessStatus, caseData, documentData
                 FROM [RPA].[journalizing].[Metadata]
                 WHERE os2formWebformId = ?;""",
@@ -237,6 +237,7 @@ def fetch_case_metadata(connection_string, os2formwebform_id):
 
                 case_metadata = {
                     'os2formWebformId': row.os2formWebformId,
+                    'description': row.description,
                     'caseType': row.caseType,
                     'spUpdateResponseData': row.spUpdateResponseData,
                     'spUpdateProcessStatus': row.spUpdateProcessStatus,
@@ -275,12 +276,12 @@ def notify_stakeholders(
         caseid = case_id if case_id else "Ukendt"
         casetitle = case_title if case_title else "Ukendt"
         case_url = (
-            "https://go.aarhuskommune.dk" +
+            "https://go.aarhuskommune.dk" + 
             case_rel_url
         ) if case_rel_url else None
 
         email_recipient = case_metadata.get("caseData", {}).get("emailRecipient")
-        email_subject = f"Ny sag er blevet journaliseret: {case_metadata.get("description")}"
+        email_subject = f"Ny sag er blevet journaliseret: {case_metadata.get('description')}"
         email_body = (
             f"<p>Vi vil informere dig om, at en ny sag er blevet journaliseret.</p>"
             f"<p>"
