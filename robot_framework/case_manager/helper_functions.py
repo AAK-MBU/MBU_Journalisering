@@ -279,6 +279,17 @@ def notify_stakeholders(
             case_rel_url
         ) if case_rel_url else None
 
+        email_recipient = case_metadata.get("caseData", {}).get("emailRecipient")
+        email_subject = f"Ny sag er blevet journaliseret: {case_metadata.get("description")}"
+        email_body = (
+            f"<p>Vi vil informere dig om, at en ny sag er blevet journaliseret.</p>"
+            f"<p>"
+            f"<strong>Sagsid:</strong> {caseid}<br>"
+            f"<strong>Sagstitel:</strong> {casetitle}"
+            f"<p>Link til sagen <a href={case_url}>her</a>"
+            f"</p>"
+        )
+
         if error_message:
             email_recipient = orchestrator_connection.get_constant("Error Email").value
             email_subject = "Fejl ved journalisering af sag"
@@ -293,31 +304,7 @@ def notify_stakeholders(
             )
 
         elif form_type in ("indmeld_kraenkelser_af_boern", "respekt_for_graenser_privat", "respekt_for_graenser"):
-            email_recipient = case_metadata.get("caseData", {}).get("emailRecipient")
             email_subject = "Ny sag er blevet journaliseret: Respekt For Grænser"
-            email_body = (
-                f"<p>Vi vil informere dig om, at en ny sag er blevet journaliseret.</p>"
-                f"<p>"
-                f"<strong>Sagsid:</strong> {caseid}<br>"
-                f"<strong>Sagstitel:</strong> {casetitle}"
-                f"</p>"
-            )
-
-        elif form_type in ("pasningstid", "anmeldelse_af_hjemmeundervisning"):
-            subject_dict = {
-                "pasningstid": "Ændring af pasningstid i forbindelse med barselsorlov",
-                "anmeldelse_af_hjemmeundervisning": "Erklæring af hjemmeundervisning"
-            }
-            email_recipient = case_metadata.get("caseData", {}).get("emailRecipient")
-            email_subject = f"Ny sag er blevet journaliseret: {subject_dict.get(form_type)}"
-            email_body = (
-                f"<p>Vi vil informere dig om, at en ny sag er blevet journaliseret.</p>"
-                f"<p>"
-                f"<strong>Sagsid:</strong> {caseid}<br>"
-                f"<strong>Sagstitel:</strong> {casetitle}"
-                f"<p>Link til sagen <a href={case_url}>her</a>"
-                f"</p>"
-            )
 
         attachments = []
         if attachment_bytes and form_type not in ["pasningstid", "anmeldelse_af_hjemmeundervisning"]:
