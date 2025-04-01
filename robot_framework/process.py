@@ -276,7 +276,7 @@ def extract_ssn(os2formwebform_id, parsed_form_data):
         case "skriv_dit_barn_paa_venteliste":
             if parsed_form_data['data']['barnets_cpr_nummer_mitid'] != '':  # Hvis cpr kommer fra MitID
                 return parsed_form_data['data']['barnets_cpr_nummer_mitid'].replace('-', '')
-            if parsed_form_data['data']['cpr_barnets_nummer'] != '':
-                return parsed_form_data['data']['cpr_barnets_nummer'].replace('-', '')
+            if parsed_form_data['data']['cpr_barnets_nummer_'] != '':
+                return parsed_form_data['data']['cpr_barnets_nummer_'].replace('-', '')
         case _:
             return None
