@@ -38,7 +38,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         form_submitted_date = form['form_submitted_date']
         parsed_form_data = json.loads(form['form_data'])
         ssn = extract_ssn(os2formwebform_id=os2formwebform_id, parsed_form_data=parsed_form_data)
-        if ssn is None:
+        if ssn is None and os2formwebform_id not in ('respekt_for_graenser', 'respekt_for_graenser_privat', 'indmeld_kraenkelser_af_boern'):
             raise ValueError("SSN is None")
 
         person_full_name = None
