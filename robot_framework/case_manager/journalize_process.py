@@ -98,7 +98,7 @@ def get_forms_data(conn_string: str, form_type: str, params: Optional[List[Any]]
                 [RPA].[journalizing].[Forms] f on f.form_id = j.form_id
             WHERE
                 f.form_type = '{form_type}'
-                AND j.status IS NULL
+                AND (j.status IS NULL OR j.status = 'New')
             ORDER BY
                 f.form_submitted_date ASC
         """
