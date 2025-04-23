@@ -24,6 +24,7 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
     forms_data = jp.get_forms_data(conn_string=credentials['sql_conn_string'], form_type=os2formwebform_id)
 
     for form in forms_data:
+        # Maybe outside loop
         case_handler = CaseHandler(
             credentials['go_api_endpoint'],
             credentials['go_api_username'],
@@ -38,7 +39,16 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         form_submitted_date = form['form_submitted_date']
         parsed_form_data = json.loads(form['form_data'])
         ssn = extract_ssn(os2formwebform_id=os2formwebform_id, parsed_form_data=parsed_form_data)
+
+        # Maybe outside loop
+        status_params_inprogress, status_params_success, status_params_failed = get_status_params(form_id)
+
         if ssn is None and os2formwebform_id not in ('respekt_for_graenser', 'respekt_for_graenser_privat', 'indmeld_kraenkelser_af_boern'):
+            execute_stored_procedure(
+                credentials['sql_conn_string'],
+                case_metadata['spUpdateProcessStatus'],
+                status_params_failed)
+
             raise ValueError("SSN is None")
 
         person_full_name = None
@@ -47,7 +57,6 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         orchestrator_connection.log_trace(f"form_id: {form_id}")
         orchestrator_connection.log_trace(f"form_submitted_date: {form_submitted_date}")
 
-        status_params_inprogress, status_params_success, status_params_failed = get_status_params(form_id)
         execute_stored_procedure(
             credentials['sql_conn_string'],
             case_metadata['spUpdateProcessStatus'],
