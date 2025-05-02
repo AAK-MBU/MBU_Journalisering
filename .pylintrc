@@ -1,6 +1,7 @@
 [pylint.messages_control]
 disable = 
   C0301, # Line too long
+  C0103, # Constant name doesn't conform to UPPER_CASE naming style
   I1101, E1101, # C-modules members
   R0913, # Too many arguments
   R0914, # Too many local variables

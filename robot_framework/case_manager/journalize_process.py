@@ -612,7 +612,7 @@ def journalize_file(
                 f"An unexpected error occurred during file journalization: {e}"))
 
 
-def look_for_existing_case(case_handler, document_handler, ssn):
+def look_for_existing_case(os2form_webform_id, case_handler, document_handler, ssn):
     """
     A function to look for an existing citizen case for a specified form type
     """
@@ -621,7 +621,13 @@ def look_for_existing_case(case_handler, document_handler, ssn):
     case_title = ""
     case_relative_url = ""
 
-    print("helooooo")
+    keyword_match = ""
+
+    if os2form_webform_id == "indmeldelse_i_modtagelsesklasse":
+        keyword_match = "Kvitteringmodtagelsesklasse"
+
+    # elif os2form_webform_id == "a different webform":  # This way we can apply the check to other webforms
+        # keyword_match = "different keyword"
 
     response = document_handler.search_documents_using_search_term(ssn, '/_goapi/Search/Results')
 
@@ -633,7 +639,7 @@ def look_for_existing_case(case_handler, document_handler, ssn):
     if "Results" in res_rows:
         for row in res_rows["Results"]:
             if "title" in row:
-                if row["title"] == "Kvitteringmodtagelsesklasse":
+                if row["title"] == keyword_match:
                     case_id = row.get("caseid")
 
                     case_metadata_response = case_handler.get_case_metadata(f'/_goapi/Cases/Metadata/{case_id}')
@@ -644,46 +650,6 @@ def look_for_existing_case(case_handler, document_handler, ssn):
 
                     case_relative_url = parsed_metadata.get("ows_CaseUrl")
 
-                    return case_id, case_title, case_relative_url
+                    break
 
-    # return None
-
-
-if __name__ == "__main__":
-    # test stuff - DELETE!
-    import sys
-    import os
-
-    from robot_framework.case_manager.case_handler import CaseHandler
-    from robot_framework.case_manager.document_handler import DocumentHandler
-
-    print("testing ...")
-
-    # !!! DELETE THIS !!!
-    sys.argv = [
-        "test.py",
-        "DADJ - test ifm dobbelt modtagelsesklasse case",
-        os.getenv("ORCHESTRATOR_CONNECTION_STRING"),
-        os.getenv("ORCHESTRATOR_ENCRYPTION_KEY"),
-        json.dumps({
-            "test_key": "test_value",
-        })
-    ]
-    # !!! DELETE THIS !!!
-
-    test_orchestrator_connection = OrchestratorConnection.create_connection_from_args()
-
-    test_credentials = get_credentials_and_constants(test_orchestrator_connection)
-
-    # Maybe outside loop
-    test_case_handler = CaseHandler(
-        test_credentials['go_api_endpoint'],
-        test_credentials['go_api_username'],
-        test_credentials['go_api_password'])
-
-    test_document_handler = DocumentHandler(
-        test_credentials['go_api_endpoint'],
-        test_credentials['go_api_username'],
-        test_credentials['go_api_password'])
-
-    t1, t2, t3 = look_for_existing_case(test_case_handler, test_document_handler, os.getenv("DADJ_SSN"))
+    return case_id, case_title, case_relative_url

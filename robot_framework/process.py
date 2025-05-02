@@ -151,8 +151,15 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                     )
                     continue
 
-        # LOGIC HERE TO RETRIEVE EXISTING MODTAGELSESKLASSE TILMELDING CASE
-        
+        if os2formwebform_id == "indmeldelse_i_modtagelsesklasse":
+            orchestrator_connection.log_trace("Form type is modtagelsesklasse - performing check for existing citizen case")
+
+            case_id, case_title, case_rel_url = jp.look_for_existing_case(os2formwebform_id, case_handler, document_handler, ssn)
+
+            if case_id != "" and case_title != "" and case_rel_url != "":
+                orchestrator_connection.log_trace("Existing citizen case found! Will not create a new case.")
+
+                create_new_go_case = False
 
         if create_new_go_case:
             orchestrator_connection.log_trace("Create case.")
