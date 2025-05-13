@@ -54,6 +54,8 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
         person_full_name = None
         case_folder_id = None
 
+        create_new_go_case = True
+
         orchestrator_connection.log_trace(f"form_id: {form_id}")
         orchestrator_connection.log_trace(f"form_submitted_date: {form_submitted_date}")
 
@@ -149,30 +151,41 @@ def process(orchestrator_connection: OrchestratorConnection) -> None:
                     )
                     continue
 
-        orchestrator_connection.log_trace("Create case.")
-        try:
-            case_id, case_title, case_rel_url = jp.create_case(
-                case_handler=case_handler,
-                orchestrator_connection=orchestrator_connection,
-                parsed_form_data=parsed_form_data,
-                os2form_webform_id=os2formwebform_id,
-                case_type=case_metadata['caseType'],
-                case_data=case_metadata['caseData'],
-                conn_string=credentials['sql_conn_string'],
-                update_response_data=case_metadata['spUpdateResponseData'],
-                update_process_status=case_metadata['spUpdateProcessStatus'],
-                process_status_params_failed=status_params_failed,
-                form_id=form_id,
-                ssn=ssn,
-                person_full_name=person_full_name,
-                case_folder_id=case_folder_id
-            )
-            orchestrator_connection.log_trace("Case creation successful.")
-        except Exception as e:
-            message = f"Error creating case: {e}"
-            print(message)
-            notify_stakeholders(case_metadata, None, None, None, orchestrator_connection, message, None)
-            continue
+        if os2formwebform_id == "indmeldelse_i_modtagelsesklasse":
+            orchestrator_connection.log_trace("Form type is modtagelsesklasse - performing check for existing citizen case")
+
+            case_id, case_title, case_rel_url = jp.look_for_existing_case(os2formwebform_id, case_handler, document_handler, ssn)
+
+            if case_id != "" and case_title != "" and case_rel_url != "":
+                orchestrator_connection.log_trace("Existing citizen case found! Will not create a new case.")
+
+                create_new_go_case = False
+
+        if create_new_go_case:
+            orchestrator_connection.log_trace("Create case.")
+            try:
+                case_id, case_title, case_rel_url = jp.create_case(
+                    case_handler=case_handler,
+                    orchestrator_connection=orchestrator_connection,
+                    parsed_form_data=parsed_form_data,
+                    os2form_webform_id=os2formwebform_id,
+                    case_type=case_metadata['caseType'],
+                    case_data=case_metadata['caseData'],
+                    conn_string=credentials['sql_conn_string'],
+                    update_response_data=case_metadata['spUpdateResponseData'],
+                    update_process_status=case_metadata['spUpdateProcessStatus'],
+                    process_status_params_failed=status_params_failed,
+                    form_id=form_id,
+                    ssn=ssn,
+                    person_full_name=person_full_name,
+                    case_folder_id=case_folder_id
+                )
+                orchestrator_connection.log_trace("Case creation successful.")
+            except Exception as e:
+                message = f"Error creating case: {e}"
+                print(message)
+                notify_stakeholders(case_metadata, None, None, None, orchestrator_connection, message, None)
+                continue
 
         orchestrator_connection.log_trace("Journalize files.")
         try:
